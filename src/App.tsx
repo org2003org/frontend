@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
-import Dashboard from './pages/dashboard';
+import Dashboard from './pages/Dashboard';
 import Boards from './pages/Boards';
-import Backlog from './pages/backlog';
-import Sprints from './pages/sprints';
-import Team from './pages/team';
-import Settings from './pages/settings';
+import Backlog from './pages/Backlog';
+import Sprints from './pages/Sprints';
+import Team from './pages/Team';
+import Settings from './pages/Settings';
 function App() {
   return (
     <BrowserRouter>
