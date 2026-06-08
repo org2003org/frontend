@@ -1,4 +1,5 @@
-import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Box, Divider } from '@mui/material';
+import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Box, Divider, IconButton } from '@mui/material';
+import { useEffect, useState } from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -7,16 +8,77 @@ import PeopleIcon from '@mui/icons-material/People';
 import SmartToyIcon from '@mui/icons-material/SmartToy';          
 import SettingsIcon from '@mui/icons-material/Settings';          
 import CircleIcon from '@mui/icons-material/Circle';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import CreateWorkspaceDialog from '../workspace/CreateWorkspaceDialog';
 
 interface SidebarProps {
   drawerWidth: number;
+}
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface Workspace {
+  _id: string;
+  name: string;
 }
 
 export default function Sidebar({ drawerWidth }: SidebarProps) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const location = useLocation();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [shouldRefetch, setShouldRefetch] = useState(false);
+
+  const handleWorkspaceCreated = () => {
+    setShouldRefetch(prev => !prev);
+  };
+
+  useEffect(() => {
+    const onWorkspaceCreated = () => {
+      setShouldRefetch(prev => !prev);
+    };
+    window.addEventListener('workspaceCreated', onWorkspaceCreated);
+    return () => {
+      window.removeEventListener('workspaceCreated', onWorkspaceCreated);
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjZlMTBjZmVlNTE1NmU4MThjMGQyNSIsImVtYWlsIjoiemlhZEBleGFtcGxlLmNvbSIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTc4MDkzMjg3NiwiZXhwIjoxNzgxMDE5Mjc2fQ._GAv5mHcXtWMbAnH9DM4B9n0JAk9yJ7jdovY7_9VkwU'; // Note: Hardcoding tokens is not secure for production.
+    fetch('http://localhost:5000/api/workspaces', {
+
+      method: 'GET',
+      headers: {
+        'Authorization': `${token}`
+      },
+      credentials: 'include' // Include cookies if your backend uses them for auth
+    })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then(apiResponse => {
+      if (apiResponse.success && Array.isArray(apiResponse.data)) {
+        const colors = ['#4A148C', '#6200EA', '#3F51B5', '#2196F3', '#009688', '#4CAF50'];
+        const fetchedProjects = apiResponse.data.map((workspace: Workspace, index: number) => ({
+          id: workspace.name,
+          name: workspace.name,
+          color: colors[index % colors.length] // Assign a color from the predefined list
+        }));
+        setProjects(fetchedProjects);
+      }
+    })
+    .catch(err => {
+      console.error('Error fetching workspaces:', err);
+    });
+  }, [shouldRefetch]);
 
   // Core project management links
   const primaryMenuItems = [
@@ -31,11 +93,6 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
     { text: 'Team', icon: <PeopleIcon />, path: 'team' },
     { text: 'AI Assistant', icon: <SmartToyIcon />, path: 'ai-assistant' },
     { text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
-  ];
-
-  const projects = [
-    { id: 'zabatet-platform', name: 'Zabatet Platform', color: '#4A148C' },
-    { id: 'mobile-app', name: 'Mobile App', color: '#6200EA' },
   ];
 
   // Helper component to avoid repetitive rendering logic
@@ -92,7 +149,12 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
 
       <Divider sx={{ my: 1 }} />
 
-      <Typography variant="overline" sx={{ px: 3, pt: 1, color: 'text.secondary' }}>Projects</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 1 }}>
+        <Typography variant="overline" sx={{ color: 'text.secondary' }}>Projects</Typography>
+        <IconButton size="small" onClick={() => setOpenCreateDialog(true)}>
+          <AddIcon fontSize="small" />
+        </IconButton>
+      </Box>
       
       <List>
         {projects.map((proj) => (
@@ -114,6 +176,12 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
            </ListItem>
         ))}
       </List>
+
+      <CreateWorkspaceDialog 
+        open={openCreateDialog}
+        onClose={() => setOpenCreateDialog(false)}
+        onWorkspaceCreated={handleWorkspaceCreated}
+      />
     </Drawer>
   );
 }
