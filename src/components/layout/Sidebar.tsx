@@ -39,6 +39,16 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   };
 
   useEffect(() => {
+    const onWorkspaceCreated = () => {
+      setShouldRefetch(prev => !prev);
+    };
+    window.addEventListener('workspaceCreated', onWorkspaceCreated);
+    return () => {
+      window.removeEventListener('workspaceCreated', onWorkspaceCreated);
+    };
+  }, []);
+
+  useEffect(() => {
     const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjZlMTBjZmVlNTE1NmU4MThjMGQyNSIsImVtYWlsIjoiemlhZEBleGFtcGxlLmNvbSIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTc4MDkzMjg3NiwiZXhwIjoxNzgxMDE5Mjc2fQ._GAv5mHcXtWMbAnH9DM4B9n0JAk9yJ7jdovY7_9VkwU'; // Note: Hardcoding tokens is not secure for production.
     fetch('http://localhost:5000/api/workspaces', {
 
