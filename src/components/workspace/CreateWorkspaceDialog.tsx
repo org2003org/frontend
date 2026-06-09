@@ -12,39 +12,39 @@ export default function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreate
   const [workspaceDescription, setWorkspaceDescription] = useState('');
 
   const handleCreateWorkspace = () => {
-    const ownerId = '6a26e10cfee5156e818c0d25';
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjZlMTBjZmVlNTE1NmU4MThjMGQyNSIsImVtYWlsIjoiemlhZEBleGFtcGxlLmNvbSIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTc4MDkzMjg3NiwiZXhwIjoxNzgxMDE5Mjc2fQ._GAv5mHcXtWMbAnH9DM4B9n0JAk9yJ7jdovY7_9VkwU';
+    const ownerId = '6a2799733d4f0cef5cd21c01';
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjc5OTczM2Q0ZjBjZWY1Y2QyMWMwMSIsImVtYWlsIjoibWFobW91ZEBnbWFpbC5jb20iLCJyb2xlIjoiTWVtYmVyIiwiaWF0IjoxNzgwOTgwODgzLCJleHAiOjE3ODM1NzI4ODN9.PMZAdOLGEZxSfF8GYns_A6HZKEiARQuPgIZcLYzh1Oc';
 
     fetch('http://localhost:5000/api/workspaces', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `${token}`
       },
+      credentials: "include",
       body: JSON.stringify({
         name: workspaceName,
         description: workspaceDescription,
         owner: ownerId
       })
     })
-    .then(res => {
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      return res.json();
-    })
-    .then(apiResponse => {
-      if (apiResponse.success) {
-        console.log('Workspace created:', apiResponse.data);
-        onWorkspaceCreated(); // Notify parent to refetch
-        handleClose();
-      } else {
-        throw new Error(apiResponse.message || 'Failed to create workspace');
-      }
-    })
-    .catch(err => {
-      console.error('Error creating workspace:', err);
-    });
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiResponse => {
+        if (apiResponse.success) {
+          console.log('Workspace created:', apiResponse.data);
+          onWorkspaceCreated(); // Notify parent to refetch
+          handleClose();
+        } else {
+          throw new Error(apiResponse.message || 'Failed to create workspace');
+        }
+      })
+      .catch(err => {
+        console.error('Error creating workspace:', err);
+      });
   };
 
   const handleClose = () => {
