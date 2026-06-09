@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
-import RunCircleIcon from '@mui/icons-material/RunCircle';        
-import PeopleIcon from '@mui/icons-material/People';              
-import SmartToyIcon from '@mui/icons-material/SmartToy';          
-import SettingsIcon from '@mui/icons-material/Settings';          
+import RunCircleIcon from '@mui/icons-material/RunCircle';
+import PeopleIcon from '@mui/icons-material/People';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SettingsIcon from '@mui/icons-material/Settings';
 import CircleIcon from '@mui/icons-material/Circle';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import CreateWorkspaceDialog from '../workspace/CreateWorkspaceDialog';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   drawerWidth: number;
@@ -30,6 +31,7 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const location = useLocation();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [shouldRefetch, setShouldRefetch] = useState(false);
@@ -58,26 +60,26 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
       },
       credentials: 'include' // Include cookies if your backend uses them for auth
     })
-    .then(res => {
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      return res.json();
-    })
-    .then(apiResponse => {
-      if (apiResponse.success && Array.isArray(apiResponse.data)) {
-        const colors = ['#4A148C', '#6200EA', '#3F51B5', '#2196F3', '#009688', '#4CAF50'];
-        const fetchedProjects = apiResponse.data.map((workspace: Workspace, index: number) => ({
-          id: workspace.name,
-          name: workspace.name,
-          color: colors[index % colors.length] // Assign a color from the predefined list
-        }));
-        setProjects(fetchedProjects);
-      }
-    })
-    .catch(err => {
-      console.error('Error fetching workspaces:', err);
-    });
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiResponse => {
+        if (apiResponse.success && Array.isArray(apiResponse.data)) {
+          const colors = ['#4A148C', '#6200EA', '#3F51B5', '#2196F3', '#009688', '#4CAF50'];
+          const fetchedProjects = apiResponse.data.map((workspace: Workspace, index: number) => ({
+            id: workspace.name,
+            name: workspace.name,
+            color: colors[index % colors.length] // Assign a color from the predefined list
+          }));
+          setProjects(fetchedProjects);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching workspaces:', err);
+      });
   }, [shouldRefetch]);
 
   // Core project management links
@@ -104,14 +106,14 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
 
         return (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton 
-              selected={isActive} 
+            <ListItemButton
+              selected={isActive}
               onClick={() => navigate(targetPath)}
-              sx={{ 
-                borderRadius: '0 20px 20px 0', 
-                mr: 2, 
-                mb: 0.5, 
-                '&.Mui-selected': { bgcolor: '#EDE7F6', color: '#6200EA' } 
+              sx={{
+                borderRadius: '0 20px 20px 0',
+                mr: 2,
+                mb: 0.5,
+                '&.Mui-selected': { bgcolor: '#EDE7F6', color: '#6200EA' }
               }}
             >
               <ListItemIcon sx={{ color: isActive ? '#6200EA' : 'inherit', minWidth: 40 }}>
@@ -135,15 +137,15 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Zabatet</Typography>
-        <Typography variant="caption" color="text.secondary">Startup Workspace</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{user?.name ?? 'N/A'}</Typography>
+        <Typography variant="caption" color="text.secondary">{user?.email ?? 'N/A'}</Typography>
       </Box>
 
       {/* Render Workspace Management links */}
       {renderNavList(primaryMenuItems)}
-      
+
       <Divider sx={{ my: 1 }} />
-      
+
       {/* Render Collaboration/AI/Settings links */}
       {renderNavList(secondaryMenuItems)}
 
@@ -155,29 +157,29 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
           <AddIcon fontSize="small" />
         </IconButton>
       </Box>
-      
+
       <List>
         {projects.map((proj) => (
-           <ListItem key={proj.id} disablePadding>
-             <ListItemButton onClick={() => navigate(`/project/${proj.id}/dashboard`)}>
-               <ListItemIcon sx={{ minWidth: 30 }}>
-                 <CircleIcon sx={{ fontSize: 12, color: proj.color }} />
-               </ListItemIcon>
-               <ListItemText 
-                  primary={proj.name} 
-                  sx={{ 
-                    '& .MuiTypography-root': { 
-                      fontSize: '0.9rem', 
-                      fontWeight: projectId === proj.id ? 'bold' : 'normal' 
-                    } 
-                  }} 
-                />
-             </ListItemButton>
-           </ListItem>
+          <ListItem key={proj.id} disablePadding>
+            <ListItemButton onClick={() => navigate(`/project/${proj.id}/dashboard`)}>
+              <ListItemIcon sx={{ minWidth: 30 }}>
+                <CircleIcon sx={{ fontSize: 12, color: proj.color }} />
+              </ListItemIcon>
+              <ListItemText
+                primary={proj.name}
+                sx={{
+                  '& .MuiTypography-root': {
+                    fontSize: '0.9rem',
+                    fontWeight: projectId === proj.id ? 'bold' : 'normal'
+                  }
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
         ))}
       </List>
 
-      <CreateWorkspaceDialog 
+      <CreateWorkspaceDialog
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
         onWorkspaceCreated={handleWorkspaceCreated}
