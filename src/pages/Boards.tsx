@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Chip, Avatar, IconButton, Button, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  MenuItem, Select, FormControl, InputLabel, ToggleButton,
+  MenuItem, Select, ToggleButton,
   ToggleButtonGroup, Tooltip, Divider,
   Paper, InputAdornment, LinearProgress, CircularProgress,
   Alert, Skeleton,
@@ -76,7 +76,6 @@ const LABEL_COLORS: Record<string, { color: string; bg: string }> = {
   DevOps:      { color: '#546E7A', bg: '#ECEFF1' },
 };
 
-const ALL_LABELS = Object.keys(LABEL_COLORS);
 const COLUMN_ORDER: TaskStatus[] = ['Backlog', 'To Do', 'In Progress', 'Review', 'Done'];
 const COLUMN_DOT: Record<TaskStatus, string> = {
   'Backlog':     '#9E9E9E',
@@ -202,147 +201,8 @@ function TaskCard({
   );
 }
 
-// ─── Add Task Dialog ───────────────────────────────────────────────────────────
 
-function AddTaskDialog({
-  open, onClose, defaultStatus, boardId, sprints, onCreated,
-}: {
-  open: boolean; onClose: () => void; defaultStatus: TaskStatus;
-  boardId: string; sprints: SprintDoc[]; onCreated: (task: TaskDoc) => void;
-}) {
-  const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<TaskStatus>(defaultStatus);
-  const [priority, setPriority] = useState<Priority>('Medium');
-  const [points, setPoints] = useState('3');
-  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [dueDate, setDueDate] = useState('');
-  const [sprintId, setSprintId] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => { setStatus(defaultStatus); }, [defaultStatus]);
-
-  const handleSubmit = async () => {
-    if (!title.trim()) return;
-    setSaving(true); setError('');
-    try {
-      const { data } = await api.post('/tasks', {
-        title: title.trim(), status, priority,
-        storyPoints: points ? Number(points) : undefined,
-        labels: selectedLabels, boardId,
-        dueDate: dueDate || undefined,
-        sprintId: sprintId || undefined,
-      });
-      onCreated(data);
-      setTitle(''); setSelectedLabels([]); setPriority('Medium'); setPoints('3');
-      setDueDate(''); setSprintId('');
-      onClose();
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Failed to create task');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleLabel = (lbl: string) =>
-    setSelectedLabels(prev => prev.includes(lbl) ? prev.filter(l => l !== lbl) : [...prev, lbl]);
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
-      slotProps={{ paper: { sx: { borderRadius: '16px' } } }}>
-      <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>New Task</Typography>
-        <IconButton onClick={onClose} size="small"><CloseIcon fontSize="small" /></IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ pt: 1 }}>
-        {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
-
-        <TextField fullWidth autoFocus label="Task Title" size="small"
-          value={title} onChange={e => setTitle(e.target.value)}
-          sx={{ mb: 2, mt: 1 }}
-          onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} />
-
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <FormControl size="small" fullWidth>
-            <InputLabel>Status</InputLabel>
-            <Select value={status} label="Status" onChange={e => setStatus(e.target.value as TaskStatus)}>
-              {COLUMN_ORDER.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <InputLabel>Priority</InputLabel>
-            <Select value={priority} label="Priority" onChange={e => setPriority(e.target.value as Priority)}>
-              {(['Low', 'Medium', 'High'] as Priority[]).map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <TextField label="Pts" type="number" size="small" sx={{ width: 80 }}
-            value={points} onChange={e => setPoints(e.target.value)}
-            slotProps={{ htmlInput: { min: 0, max: 99 } }} />
-        </Box>
-
-        {sprints.length > 0 && (
-          <FormControl size="small" fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Sprint</InputLabel>
-            <Select value={sprintId} label="Sprint" onChange={e => setSprintId(e.target.value)}>
-              <MenuItem value=""><em>No sprint (Backlog)</em></MenuItem>
-              {sprints.map(s => (
-                <MenuItem key={s._id} value={s._id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {s.name}
-                    <Chip label={s.status} size="small"
-                      sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700,
-                        color: SPRINT_STATUS_COLOR[s.status].color,
-                        bgcolor: SPRINT_STATUS_COLOR[s.status].bg }} />
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-
-        <TextField fullWidth size="small" label="Due Date" type="date" sx={{ mb: 2 }}
-          value={dueDate} onChange={e => setDueDate(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }} />
-
-        <Typography variant="caption" sx={{ color: '#757575', fontWeight: 700, mb: 0.5, display: 'block', letterSpacing: 0.5 }}>
-          LABELS
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.7 }}>
-          {ALL_LABELS.map(lbl => {
-            const cfg = LABEL_COLORS[lbl];
-            const sel = selectedLabels.includes(lbl);
-            return (
-              <Chip key={lbl} label={lbl} size="small" onClick={() => toggleLabel(lbl)}
-                sx={{
-                  bgcolor: sel ? cfg.bg : '#F5F5F5', color: sel ? cfg.color : '#757575',
-                  fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s ease',
-                  border: sel ? `2px solid ${cfg.color}` : '2px solid transparent',
-                }} />
-            );
-          })}
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={{ textTransform: 'none', color: '#757575' }}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={!title.trim() || saving}
-          startIcon={saving ? <CircularProgress size={14} color="inherit" /> : null}
-          sx={{
-            textTransform: 'none', borderRadius: '8px',
-            background: 'linear-gradient(135deg, #7C4DFF, #651FFF)',
-            '&:hover': { background: 'linear-gradient(135deg, #651FFF, #4527A0)' },
-          }}>
-          {saving ? 'Creating…' : 'Create Task'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ─── Create Board Dialog ───────────────────────────────────────────────────────
+// ─── Create Board Dialog ─────────────────────────────────────────────────────────────────
 
 function CreateBoardDialog({
   open, onClose, workspaceId, onCreated,
@@ -513,12 +373,11 @@ function SprintFilter({
 // ─── Kanban Column ─────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  status, tasks, onDragStart, onDrop, onAddClick, loadingTasks,
+  status, tasks, onDragStart, onDrop, loadingTasks,
 }: {
   status: TaskStatus; tasks: TaskDoc[];
   onDragStart: (id: string, from: TaskStatus) => void;
   onDrop: (to: TaskStatus) => void;
-  onAddClick: (status: TaskStatus) => void;
   loadingTasks: boolean;
 }) {
   const [dragOver, setDragOver] = useState(false);
@@ -531,8 +390,7 @@ function KanbanColumn({
       onDragLeave={() => setDragOver(false)}
       onDrop={() => { setDragOver(false); onDrop(status); }}
     >
-      {/* Column header — fixed */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5, flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, px: 0.5, flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
           <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: COLUMN_DOT[status] }} />
           <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A1A2E', fontSize: '0.82rem' }}>{status}</Typography>
@@ -542,10 +400,6 @@ function KanbanColumn({
             <Typography variant="caption" sx={{ color: '#BDBDBD', fontWeight: 500, fontSize: '0.7rem' }}>{totalPoints}pts</Typography>
           )}
         </Box>
-        <IconButton size="small" onClick={() => onAddClick(status)}
-          sx={{ color: '#BDBDBD', '&:hover': { color: '#7C4DFF' } }}>
-          <AddIcon sx={{ fontSize: 16 }} />
-        </IconButton>
       </Box>
 
       {/* Cards — scrollable */}
@@ -566,16 +420,6 @@ function KanbanColumn({
           ))
         }
       </Box>
-
-      {/* Add card button — fixed at bottom */}
-      <Button startIcon={<AddIcon />} onClick={() => onAddClick(status)}
-        sx={{
-          mt: 0.5, textTransform: 'none', color: '#BDBDBD', justifyContent: 'flex-start',
-          pl: 1, fontSize: '0.76rem', fontWeight: 500, borderRadius: '8px', flexShrink: 0,
-          '&:hover': { color: '#7C4DFF', bgcolor: '#EDE7F620' },
-        }}>
-        Add card
-      </Button>
     </Box>
   );
 }
@@ -613,9 +457,6 @@ export default function Boards() {
   const [filterMode, setFilterMode] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Add task dialog
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
-  const [addTaskStatus, setAddTaskStatus] = useState<TaskStatus>('To Do');
 
   // ── 1. Resolve workspace Mongo _id ──
   useEffect(() => {
@@ -691,8 +532,6 @@ export default function Boards() {
       setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: from } : t));
     }
   };
-
-  const openAddTask = (status: TaskStatus) => { setAddTaskStatus(status); setAddTaskOpen(true); };
 
   const handleBoardCreated = (board: BoardDoc) => {
     setBoards(prev => [...prev, board]);
@@ -786,36 +625,6 @@ export default function Boards() {
               <ToggleButton value="unassigned">Unassigned</ToggleButton>
             </ToggleButtonGroup>
           </Box>
-
-          {/* Right side */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TextField
-              size="small" placeholder="Search…"
-              value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 16, color: '#BDBDBD' }} />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              sx={{ width: 170, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.78rem' } }}
-            />
-
-            <Button
-              variant="contained" startIcon={<AddIcon />}
-              onClick={() => openAddTask('To Do')} disabled={!selectedBoardId}
-              sx={{
-                textTransform: 'none', fontWeight: 600, borderRadius: '10px', px: 1.8,
-                background: 'linear-gradient(135deg, #7C4DFF, #651FFF)',
-                boxShadow: '0 4px 12px #7C4DFF40', fontSize: '0.82rem',
-                '&:hover': { background: 'linear-gradient(135deg, #651FFF, #4527A0)', boxShadow: '0 6px 16px #7C4DFF50' },
-              }}>
-              Add Task
-            </Button>
-          </Box>
         </Box>
 
         {/* ── Progress bar ── */}
@@ -881,7 +690,6 @@ export default function Boards() {
                   tasks={tasksByStatus(status)}
                   onDragStart={handleDragStart}
                   onDrop={handleDrop}
-                  onAddClick={openAddTask}
                   loadingTasks={loadingTasks}
                 />
               ))}
@@ -891,13 +699,6 @@ export default function Boards() {
       </Box>
 
       {/* ── Dialogs ── */}
-      {selectedBoardId && (
-        <AddTaskDialog
-          open={addTaskOpen} onClose={() => setAddTaskOpen(false)}
-          defaultStatus={addTaskStatus} boardId={selectedBoardId}
-          sprints={sprints} onCreated={task => setTasks(prev => [...prev, task])}
-        />
-      )}
       {workspaceMongoId && (
         <CreateBoardDialog
           open={createBoardOpen} onClose={() => setCreateBoardOpen(false)}
