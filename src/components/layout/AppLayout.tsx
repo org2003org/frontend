@@ -7,17 +7,20 @@ const drawerWidth = 260;
 
 export default function AppLayout() {
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: '#F8F9FA' }}>
+    // Root: full viewport, flex row, NO overflow so nothing leaks past 100vh/100vw
+    <Box sx={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', bgcolor: '#F8F9FA' }}>
       <CssBaseline />
-      
+
       <Sidebar drawerWidth={drawerWidth} />
 
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Header />
-        
-        {/* The Outlet renders whatever page component matches the current URL */}
-        <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
-          <Outlet /> 
+
+        <Box
+          component="main"
+          sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
+          <Outlet />
         </Box>
       </Box>
     </Box>
