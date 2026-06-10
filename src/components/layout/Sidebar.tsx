@@ -1,4 +1,4 @@
-import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Box, Divider, IconButton } from '@mui/material';
+import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Box, Divider, IconButton, Menu, MenuItem } from '@mui/material';
 import { useEffect, useState } from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
@@ -9,22 +9,29 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CircleIcon from '@mui/icons-material/Circle';
 import AddIcon from '@mui/icons-material/Add';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import CreateWorkspaceDialog from '../workspace/CreateWorkspaceDialog';
+import EditWorkspaceDialog from '../workspace/EditWorkspaceDialog';
 import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   drawerWidth: number;
 }
 interface Project {
+  _id: string;
   id: string;
   name: string;
+  description?: string;
   color: string;
 }
 
 interface Workspace {
   _id: string;
   name: string;
+  description?: string;
 }
 
 export default function Sidebar({ drawerWidth }: SidebarProps) {
@@ -35,6 +42,42 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [shouldRefetch, setShouldRefetch] = useState(false);
+  
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<Project | null>(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, workspace: Project) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedWorkspace(workspace);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
+  const handleEditClick = () => {
+    handleMenuClose();
+    setOpenEditDialog(true);
+  };
+
+  const handleDeleteClick = async () => {
+    handleMenuClose();
+    if (!selectedWorkspace) return;
+    if (window.confirm(`Are you sure you want to delete workspace "${selectedWorkspace.name}"?`)) {
+      try {
+        const { default: api } = await import('../../api/api');
+        await api.delete(`/workspaces/${selectedWorkspace._id}`);
+        handleWorkspaceCreated(); // Refetch workspaces
+        if (projectId === selectedWorkspace.id) {
+            navigate('/');
+        }
+      } catch (err) {
+        console.error('Error deleting workspace', err);
+      }
+    }
+  };
 
   const handleWorkspaceCreated = () => {
     setShouldRefetch(prev => !prev);
@@ -51,35 +94,26 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   }, []);
 
   useEffect(() => {
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjZlMTBjZmVlNTE1NmU4MThjMGQyNSIsImVtYWlsIjoiemlhZEBleGFtcGxlLmNvbSIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTc4MDkzMjg3NiwiZXhwIjoxNzgxMDE5Mjc2fQ._GAv5mHcXtWMbAnH9DM4B9n0JAk9yJ7jdovY7_9VkwU'; // Note: Hardcoding tokens is not secure for production.
-    fetch('http://localhost:5000/api/workspaces', {
-
-      method: 'GET',
-      headers: {
-        'Authorization': `${token}`
-      },
-      credentials: 'include' // Include cookies if your backend uses them for auth
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(apiResponse => {
-        if (apiResponse.success && Array.isArray(apiResponse.data)) {
-          const colors = ['#4A148C', '#6200EA', '#3F51B5', '#2196F3', '#009688', '#4CAF50'];
-          const fetchedProjects = apiResponse.data.map((workspace: Workspace, index: number) => ({
-            id: workspace.name,
-            name: workspace.name,
-            color: colors[index % colors.length] // Assign a color from the predefined list
-          }));
-          setProjects(fetchedProjects);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching workspaces:', err);
-      });
+    import('../../api/api').then(({ default: api }) => {
+      api.get('/workspaces')
+        .then(res => {
+          const data = res.data?.data || res.data;
+          if (Array.isArray(data)) {
+            const colors = ['#4A148C', '#6200EA', '#3F51B5', '#2196F3', '#009688', '#4CAF50'];
+            const fetchedProjects = data.map((workspace: Workspace, index: number) => ({
+              _id: workspace._id,
+              id: workspace.name,
+              name: workspace.name,
+              description: workspace.description,
+              color: colors[index % colors.length]
+            }));
+            setProjects(fetchedProjects);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching workspaces:', err);
+        });
+    });
   }, [shouldRefetch]);
 
   // Core project management links
@@ -160,8 +194,16 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
 
       <List>
         {projects.map((proj) => (
-          <ListItem key={proj.id} disablePadding>
-            <ListItemButton onClick={() => navigate(`/project/${proj.id}/dashboard`)}>
+          <ListItem 
+            key={proj.id} 
+            disablePadding
+            secondaryAction={
+              <IconButton edge="end" size="small" onClick={(e) => handleMenuClick(e, proj)} sx={{ mr: 0.5, color: '#9E9E9E' }}>
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+            }
+          >
+            <ListItemButton onClick={() => navigate(`/project/${proj.id}/dashboard`)} sx={{ pr: 5 }}>
               <ListItemIcon sx={{ minWidth: 30 }}>
                 <CircleIcon sx={{ fontSize: 12, color: proj.color }} />
               </ListItemIcon>
@@ -170,7 +212,10 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
                 sx={{
                   '& .MuiTypography-root': {
                     fontSize: '0.9rem',
-                    fontWeight: projectId === proj.id ? 'bold' : 'normal'
+                    fontWeight: projectId === proj.id ? 'bold' : 'normal',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }
                 }}
               />
@@ -179,10 +224,33 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
         ))}
       </List>
 
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{ sx: { borderRadius: '10px', minWidth: 140, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+      >
+        <MenuItem onClick={handleEditClick} sx={{ fontSize: '0.85rem' }}>
+          <ListItemIcon sx={{ minWidth: 28 }}><EditIcon fontSize="small" /></ListItemIcon>
+          Edit
+        </MenuItem>
+        <MenuItem onClick={handleDeleteClick} sx={{ fontSize: '0.85rem', color: '#D32F2F' }}>
+          <ListItemIcon sx={{ minWidth: 28 }}><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+          Delete
+        </MenuItem>
+      </Menu>
+
       <CreateWorkspaceDialog
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
         onWorkspaceCreated={handleWorkspaceCreated}
+      />
+
+      <EditWorkspaceDialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        workspace={selectedWorkspace as any}
+        onWorkspaceUpdated={handleWorkspaceCreated}
       />
     </Drawer>
   );

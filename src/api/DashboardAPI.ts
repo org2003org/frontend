@@ -78,6 +78,8 @@ export function useDashboardData() {
 
   const [loading, setLoading] = useState(true);
   const [workspaceName, setWorkspaceName] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [ownerId, setOwnerId] = useState('');
   const [members, setMembers] = useState<MemberDoc[]>([]);
   const [boards, setBoards] = useState<BoardDoc[]>([]);
   const [allTasks, setAllTasks] = useState<TaskDoc[]>([]);
@@ -99,13 +101,25 @@ export function useDashboardData() {
       const wsId = ws?._id ?? wsList[0]?._id;
       if (!wsId) { setLoading(false); return; }
       setWorkspaceName(ws?.name ?? projectId);
+      setWorkspaceId(wsId);
 
       try {
         const memRes = await api.get(`/workspaces/${wsId}/members`);
         const memData = memRes.data.data ?? memRes.data;
-        const membersList: MemberDoc[] = memData.members ?? [];
-        if (memData.owner && !membersList.find((m: MemberDoc) => m._id === memData.owner._id)) {
-          membersList.unshift(memData.owner);
+        const oId = memData.owner?._id || '';
+        setOwnerId(oId);
+        
+        let membersList: MemberDoc[] = memData.members ?? [];
+        membersList = membersList.map((m: MemberDoc) => ({
+          ...m,
+          role: m._id === oId ? 'Owner' : m.role || 'Member'
+        }));
+
+        if (memData.owner && !membersList.find((m: MemberDoc) => m._id === oId)) {
+          membersList.unshift({
+            ...memData.owner,
+            role: 'Owner'
+          });
         }
         setMembers(membersList);
       } catch { setMembers([]); }
@@ -215,7 +229,7 @@ export function useDashboardData() {
   }, [members, allTasks]);
 
   return {
-    loading, error, workspaceName, members, boards, allTasks, allSprints,
+    loading, error, workspaceName, workspaceId, ownerId, members, boards, allTasks, allSprints,
     kpis, statusCounts, priorityCounts, activeSprintsList,
     boardStats, upcomingDeadlines, memberStats, refresh: fetchAll,
   };

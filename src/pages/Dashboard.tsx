@@ -248,60 +248,7 @@ function UpcomingDeadlines({ deadlines, loading }: {
     );
 }
 
-function TeamOverview({ memberStats, loading }: {
-    memberStats: Array<{ _id: string; name: string; email: string; role?: string; taskCount: number; points: number; doneCount: number }>;
-    loading: boolean;
-}) {
-    if (loading) return <Skeleton variant="rounded" height={120} sx={{ borderRadius: '16px' }} />;
-    return (
-        <Paper elevation={2} sx={{ p: 2.5, borderRadius: '16px' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A1A2E', fontSize: '0.88rem' }}>Team Overview</Typography>
-                <Chip label={`${memberStats.length} members`} size="small" sx={{ height: 20, fontSize: '0.66rem', fontWeight: 600, bgcolor: '#EDE7F6', color: '#7C4DFF' }} />
-            </Box>
-            {memberStats.length === 0 ? (
-                <Typography variant="body2" sx={{ color: '#BDBDBD', textAlign: 'center', py: 2 }}>No members</Typography>
-            ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {memberStats.map(m => (
-                        <Box key={m._id} sx={{
-                            display: 'flex', alignItems: 'center', gap: 2, p: 1.5,
-                            borderRadius: '10px', transition: 'all 0.15s', '&:hover': { bgcolor: '#FAFAFA' },
-                        }}>
-                            <Avatar sx={{ width: 36, height: 36, bgcolor: avatarColor(m.name), fontSize: '0.75rem', fontWeight: 700 }}>
-                                {getInitials(m.name)}
-                            </Avatar>
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1A1A2E', fontSize: '0.82rem' }} noWrap>{m.name}</Typography>
-                                    {m.role && <Chip label={m.role} size="small" sx={{ height: 16, fontSize: '0.56rem', bgcolor: m.role === 'Admin' ? '#EDE7F6' : '#F5F5F5', color: m.role === 'Admin' ? '#7C4DFF' : '#9E9E9E' }} />}
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <EmailIcon sx={{ fontSize: 11, color: '#BDBDBD' }} />
-                                    <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.68rem' }} noWrap>{m.email}</Typography>
-                                </Box>
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
-                                <Box sx={{ textAlign: 'center' }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A1A2E', fontSize: '0.82rem' }}>{m.taskCount}</Typography>
-                                    <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.58rem' }}>tasks</Typography>
-                                </Box>
-                                <Box sx={{ textAlign: 'center' }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#7C4DFF', fontSize: '0.82rem' }}>{m.points}</Typography>
-                                    <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.58rem' }}>pts</Typography>
-                                </Box>
-                                <Box sx={{ textAlign: 'center' }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#4CAF50', fontSize: '0.82rem' }}>{m.doneCount}</Typography>
-                                    <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.58rem' }}>done</Typography>
-                                </Box>
-                            </Box>
-                        </Box>
-                    ))}
-                </Box>
-            )}
-        </Paper>
-    );
-}
+
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -362,14 +309,16 @@ export default function Dashboard() {
                 <DonutChart items={priorityItems} total={kpis.totalTasks} title="Tasks by Priority" loading={loading} />
             </Box>
 
-            <Box sx={{ mb: 3 }}><ActiveSprintsList sprints={activeSprintsList} loading={loading} /></Box>
-
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 3 }}>
                 <BoardsOverview boardStats={boardStats} loading={loading} />
+                <ActiveSprintsList sprints={activeSprintsList} loading={loading} />
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
                 <UpcomingDeadlines deadlines={upcomingDeadlines} loading={loading} />
             </Box>
 
-            <Box sx={{ mb: 3 }}><TeamOverview memberStats={memberStats} loading={loading} /></Box>
+
         </Box>
     );
 }

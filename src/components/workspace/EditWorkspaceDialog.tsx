@@ -1,55 +1,62 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, CircularProgress, Typography, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../api/api';
 
-interface CreateWorkspaceDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onWorkspaceCreated: () => void;
+interface Workspace {
+  _id: string;
+  name: string;
+  description?: string;
 }
 
-export default function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreated }: CreateWorkspaceDialogProps) {
+interface EditWorkspaceDialogProps {
+  open: boolean;
+  onClose: () => void;
+  workspace: Workspace | null;
+  onWorkspaceUpdated: () => void;
+}
+
+export default function EditWorkspaceDialog({ open, onClose, workspace, onWorkspaceUpdated }: EditWorkspaceDialogProps) {
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const handleCreateWorkspace = async () => {
-    if (!workspaceName.trim()) return;
+  useEffect(() => {
+    if (workspace && open) {
+      setWorkspaceName(workspace.name);
+      // We might not have description in the sidebar workspace object, but we allow editing it anyway.
+      setWorkspaceDescription(workspace.description || '');
+    }
+  }, [workspace, open]);
+
+  const handleUpdateWorkspace = async () => {
+    if (!workspace || !workspaceName.trim()) return;
     setSaving(true);
     try {
-      const { data } = await api.post('/workspaces', {
+      await api.put(`/workspaces/${workspace._id}`, {
         name: workspaceName.trim(),
         description: workspaceDescription.trim(),
       });
-      console.log('Workspace created:', data);
-      onWorkspaceCreated(); // Notify parent to refetch
-      handleClose();
+      onWorkspaceUpdated(); // Notify parent to refetch
+      onClose();
     } catch (err: any) {
-      console.error('Error creating workspace:', err);
-      // Optional: add a toast or error state here
+      console.error('Error updating workspace:', err);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleClose = () => {
-    setWorkspaceName('');
-    setWorkspaceDescription('');
-    onClose();
-  };
-
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px' } }}>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px' } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>Create Workspace</Typography>
-        <IconButton onClick={handleClose} size="small" sx={{ color: '#9E9E9E' }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>Edit Workspace</Typography>
+        <IconButton onClick={onClose} size="small" sx={{ color: '#9E9E9E' }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 3, fontSize: '0.9rem', color: '#757575' }}>
-          Workspaces are shared environments where your team can collaborate on projects and boards.
+          Update the name and description of your workspace.
         </DialogContentText>
         <TextField
           autoFocus
@@ -78,10 +85,10 @@ export default function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreate
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={handleClose} sx={{ color: '#757575', textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
+        <Button onClick={onClose} sx={{ color: '#757575', textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
         <Button 
-          onClick={handleCreateWorkspace} 
-          disabled={!workspaceName.trim() || saving}
+          onClick={handleUpdateWorkspace} 
+          disabled={!workspaceName.trim() || saving || (workspaceName === workspace?.name && workspaceDescription === (workspace?.description || ''))}
           variant="contained"
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
           sx={{ 
@@ -89,7 +96,7 @@ export default function CreateWorkspaceDialog({ open, onClose, onWorkspaceCreate
             '&:hover': { bgcolor: '#651FFF' }
           }}
         >
-          {saving ? 'Creating...' : 'Create'}
+          {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       </DialogActions>
     </Dialog>
