@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Grid, Card, LinearProgress,
-  Avatar, Chip, IconButton, Divider, Stack
+  Avatar, Chip, IconButton, Divider, Stack,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert
 } from '@mui/material';
 import {
   Bolt as ZapIcon,
@@ -73,17 +74,17 @@ function avatarColor(name: string): string {
 const SprintCard = ({ sprint, allTasks, isActive }: { sprint: Sprint, allTasks: TaskDoc[], isActive: boolean }) => {
   // Filter tasks belonging to this sprint
   const sprintTasks = allTasks.filter(t => t.sprintId && (typeof t.sprintId === 'object' ? t.sprintId._id === sprint._id : t.sprintId === sprint._id));
-  
+
   const completedPts = sprintTasks.filter(t => t.status === "Done").reduce((s, t) => s + (t.storyPoints || 0), 0);
   const totalPts = sprintTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
   const pct = totalPts > 0 ? Math.round((completedPts / totalPts) * 100) : 0;
 
-  const daysLeft = isActive
+  const daysLeft = isActive && sprint.endDate
     ? Math.max(0, Math.ceil((new Date(sprint.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const getSprintStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getSprintStatusColor = (status?: string) => {
+    switch (status?.toLowerCase()) {
       case 'active': return 'success';
       case 'planned': return 'info';
       default: return 'default';
@@ -98,21 +99,21 @@ const SprintCard = ({ sprint, allTasks, isActive }: { sprint: Sprint, allTasks: 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <ZapIcon fontSize="small" color={isActive ? "primary" : "disabled"} />
               <Typography variant="h6" color={isActive ? "primary.dark" : "text.primary"}>{sprint.name}</Typography>
-              <Chip label={sprint.status} size="small" color={getSprintStatusColor(sprint.status) as "success" | "info" | "default"} sx={{ fontWeight: 500, height: 20 }} />
+              <Chip label={sprint.status || "Unknown"} size="small" color={getSprintStatusColor(sprint.status) as "success" | "info" | "default"} sx={{ fontWeight: 500, height: 20 }} />
             </Box>
             <Typography variant="body2" color="text.secondary">{sprint.goal}</Typography>
           </Box>
           <IconButton size="small"><MoreHorizontalIcon fontSize="small" /></IconButton>
         </Box>
-        
+
         <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CalendarIcon fontSize="small" color="action" sx={{ fontSize: 16 }} />
             <Typography variant="caption" color="text.secondary">
-              {new Date(sprint.startDate).toLocaleDateString()} &rarr; {new Date(sprint.endDate).toLocaleDateString()}
+              {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '?'} &rarr; {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '?'}
             </Typography>
           </Box>
-          {isActive && (
+          {isActive && sprint.endDate && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <TargetIcon fontSize="small" color="primary" sx={{ fontSize: 16 }} />
               <Typography variant="caption" color="primary.main" fontWeight={500}>{daysLeft} days left</Typography>
@@ -131,19 +132,19 @@ const SprintCard = ({ sprint, allTasks, isActive }: { sprint: Sprint, allTasks: 
             <Typography variant="body2" fontWeight={600}>{pct}%</Typography>
           </Box>
         </Box>
-        <LinearProgress 
-          variant="determinate" 
-          value={pct} 
-          sx={{ 
-            height: 8, 
+        <LinearProgress
+          variant="determinate"
+          value={pct}
+          sx={{
+            height: 8,
             borderRadius: 4,
             bgcolor: 'grey.100',
             '& .MuiLinearProgress-bar': {
               bgcolor: isActive ? 'primary.main' : pct === 100 ? 'success.main' : 'grey.400'
             }
-          }} 
+          }}
         />
-        
+
         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
           {[
             { label: "To Do", count: sprintTasks.filter(t => t.status === "To Do").length, color: "#818cf8" },
@@ -163,32 +164,32 @@ const SprintCard = ({ sprint, allTasks, isActive }: { sprint: Sprint, allTasks: 
 
       <Stack divider={<Divider />} sx={{ bgcolor: 'white' }}>
         {sprintTasks.map(task => {
-           const statusConfig = statusColors[task.status] || { bg: '#f3f4f6', text: '#4b5563' };
-           const priorityColor = priorityDot[task.priority] || "#9ca3af";
-           
-           return (
+          const statusConfig = statusColors[task.status] || { bg: '#f3f4f6', text: '#4b5563' };
+          const priorityColor = priorityDot[task.priority] || "#9ca3af";
+
+          return (
             <Box key={task._id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 1.5, '&:hover': { bgcolor: 'grey.50', cursor: 'pointer' } }}>
               <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: priorityColor }} />
-              <Chip 
-                label={statusLabels[task.status] || task.status} 
-                size="small" 
-                sx={{ 
-                  bgcolor: statusConfig.bg, 
+              <Chip
+                label={statusLabels[task.status] || task.status}
+                size="small"
+                sx={{
+                  bgcolor: statusConfig.bg,
                   color: statusConfig.text,
                   fontWeight: 500,
                   height: 20,
                   fontSize: '0.7rem'
-                }} 
+                }}
               />
               <Typography variant="body2" sx={{ flex: 1, '&:hover': { color: 'primary.main' } }}>{task.title}</Typography>
               <Chip label={`${task.storyPoints || 0}pt`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.50' }} />
-              <Avatar sx={{ width: 24, height: 24, fontSize: '0.6rem', bgcolor: avatarColor(task.assignee?.name) }}>
-                {initials(task.assignee?.name)}
+              <Avatar sx={{ width: 24, height: 24, fontSize: '0.6rem', bgcolor: avatarColor(task.assignee?.name || '?') }}>
+                {initials(task.assignee?.name || '?')}
               </Avatar>
             </Box>
           );
         })}
-        {sprint.status.toLowerCase() !== 'completed' && (
+        {sprint.status?.toLowerCase() !== 'completed' && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 1.5, '&:hover': { bgcolor: 'grey.50', cursor: 'pointer' } }}>
             <PlusIcon fontSize="small" color="disabled" />
             <Typography variant="body2" color="text.disabled">Add task</Typography>
@@ -199,6 +200,50 @@ const SprintCard = ({ sprint, allTasks, isActive }: { sprint: Sprint, allTasks: 
   );
 };
 
+function CreateSprintDialog({ open, onClose, boardId, onCreated }: { open: boolean, onClose: () => void, boardId: string, onCreated: (sprint: any) => void }) {
+  const [name, setName] = useState('');
+  const [goal, setGoal] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !startDate || !endDate) return;
+    setSaving(true);
+    setError('');
+    try {
+      const newSprint = await sprintApi.createSprint({ boardId, name: name.trim(), goal: goal.trim(), startDate, endDate, status: 'Planned' });
+      onCreated(newSprint);
+      setName(''); setGoal(''); setStartDate(''); setEndDate('');
+      onClose();
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? 'Failed to create sprint');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>New Sprint</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1, mt: 1 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <TextField autoFocus label="Sprint Name" size="small" fullWidth value={name} onChange={e => setName(e.target.value)} />
+        <TextField label="Sprint Goal" size="small" fullWidth value={goal} onChange={e => setGoal(e.target.value)} multiline rows={2} />
+        <TextField size="small" type="date" fullWidth InputLabelProps={{ shrink: true }} value={startDate} onChange={e => setStartDate(e.target.value)} />
+        <TextField size="small" type="date" fullWidth InputLabelProps={{ shrink: true }} value={endDate} onChange={e => setEndDate(e.target.value)} />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} sx={{ textTransform: 'none' }}>Cancel</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={!name.trim() || !startDate || !endDate || saving} sx={{ textTransform: 'none' }}>
+          {saving ? 'Creating...' : 'Create'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function Sprints() {
   const { projectId } = useParams<{ projectId: string }>();
   const [boardId, setBoardId] = useState<string | null>(null);
@@ -206,6 +251,7 @@ export default function Sprints() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [tasks, setTasks] = useState<TaskDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
 
   // 1. Resolve workspace and board
   useEffect(() => {
@@ -219,7 +265,7 @@ export default function Sprints() {
           w.name.toLowerCase().replace(/\s+/g, '-') === projectId.toLowerCase()
         );
         const wsId = ws ? ws._id : list[0]?._id;
-        
+
         if (wsId) {
           const boardRes = await api.get(`/boards/workspace/${wsId}`);
           const boards = boardRes.data.data ?? boardRes.data;
@@ -270,7 +316,7 @@ export default function Sprints() {
   });
   const users = Array.from(usersMap.values());
 
-  const activeSprint = sprints.find(s => s.status.toLowerCase() === "active") || sprints[0];
+  const activeSprint = sprints.find(s => s.status?.toLowerCase() === "active") || sprints[0];
 
   const teamCapacity = users.map(u => {
     if (!activeSprint) return { ...u, sprintTasks: 0, sprintPoints: 0 };
@@ -294,13 +340,13 @@ export default function Sprints() {
           <Typography variant="h5" fontWeight={600} color="text.primary">Sprint Planning</Typography>
           <Typography variant="body2" color="text.secondary">Manage and track your team's sprints</Typography>
         </Box>
-        <Button variant="contained" startIcon={<PlusIcon />} sx={{ textTransform: 'none', borderRadius: 2 }}>
+        <Button variant="contained" startIcon={<PlusIcon />} onClick={() => setCreateOpen(true)} sx={{ textTransform: 'none', borderRadius: 2 }}>
           New Sprint
         </Button>
       </Box>
 
       {loading ? (
-         <LinearProgress />
+        <LinearProgress />
       ) : (
         <>
           {/* Stats Row */}
@@ -308,7 +354,7 @@ export default function Sprints() {
             {[
               { label: "Sprint Velocity", value: `${activeSprintVelocity} pts`, icon: TrendingUpIcon, color: "primary.main", bg: "primary.light" },
               { label: "Team Capacity", value: `${teamCapacity.reduce((s, u) => s + u.sprintPoints, 0)} pts`, icon: UsersIcon, color: "secondary.main", bg: "secondary.light" },
-              { label: "Days Remaining", value: activeSprint ? Math.max(0, Math.ceil((new Date(activeSprint.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0, icon: CalendarIcon, color: "warning.main", bg: "warning.light" },
+              { label: "Days Remaining", value: activeSprint && activeSprint.endDate ? Math.max(0, Math.ceil((new Date(activeSprint.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0, icon: CalendarIcon, color: "warning.main", bg: "warning.light" },
               { label: "Tasks Complete", value: `${activeSprintDoneTasks}/${totalTasksCount}`, icon: TargetIcon, color: "success.main", bg: "success.light" },
             ].map((stat) => (
               <Grid item xs={12} sm={6} md={3} key={stat.label}>
@@ -334,19 +380,19 @@ export default function Sprints() {
                   return (
                     <Grid item xs={6} sm={4} md={2} key={member._id}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, borderRadius: 2, bgcolor: 'grey.50', '&:hover': { bgcolor: '#f0f4ff' } }}>
-                        <Avatar sx={{ width: 36, height: 36, mb: 1, bgcolor: avatarColor(member.name), fontSize: '0.8rem' }}>{initials(member.name)}</Avatar>
-                        <Typography variant="caption" fontWeight={600}>{member.name.split(" ")[0]}</Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={capacityPct} 
-                          sx={{ 
-                            width: '100%', 
-                            height: 6, 
-                            borderRadius: 3, 
+                        <Avatar sx={{ width: 36, height: 36, mb: 1, bgcolor: avatarColor(member.name || '?'), fontSize: '0.8rem' }}>{initials(member.name || '?')}</Avatar>
+                        <Typography variant="caption" fontWeight={600}>{member.name?.split(" ")[0] || "Unknown"}</Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={capacityPct}
+                          sx={{
+                            width: '100%',
+                            height: 6,
+                            borderRadius: 3,
                             my: 1,
                             bgcolor: 'grey.200',
                             '& .MuiLinearProgress-bar': { bgcolor: isOverloaded ? 'error.main' : 'primary.main' }
-                          }} 
+                          }}
                         />
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                           {member.sprintPoints}pts &middot; {member.sprintTasks} tasks
@@ -367,11 +413,20 @@ export default function Sprints() {
               </Card>
             ) : (
               sprints.map((sprint) => (
-                <SprintCard key={sprint._id} sprint={sprint} allTasks={tasks} isActive={sprint.status.toLowerCase() === "active"} />
+                <SprintCard key={sprint._id} sprint={sprint} allTasks={tasks} isActive={sprint.status?.toLowerCase() === "active"} />
               ))
             )}
           </Box>
         </>
+      )}
+
+      {boardId && (
+        <CreateSprintDialog
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          boardId={boardId}
+          onCreated={(s) => setSprints([...sprints, s])}
+        />
       )}
     </Box>
   );
