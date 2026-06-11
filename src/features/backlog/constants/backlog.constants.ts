@@ -13,9 +13,9 @@ export const statusStyles: Record<TaskStatus, { color: string; bg: string }> = {
 };
 
 export const priorityDot: Record<Priority, string> = {
-  Low: '#2E90FA',
-  Medium: '#F59E0B',
-  High: '#F97316',
+  Low: '#4CAF50',
+  Medium: '#7C4DFF',
+  High: '#FF9800',
 };
 
 export const labelStyles: Record<string, { color: string; bg: string }> = {

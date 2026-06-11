@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type {
+    BoardDoc,
     SprintDoc,
     TaskDoc,
     UserDoc,
+    WorkspaceDoc,
 } from '../types/backlog.types';
 
 import { getApiError } from '../utils/backlog.utils';
@@ -18,14 +20,18 @@ import {
 } from '../api/backlog.api';
 
 export function useBacklogData(projectId?: string) {
+    const [workspace, setWorkspace]           = useState<WorkspaceDoc | null>(null);
+    const [boards, setBoards]                 = useState<BoardDoc[]>([]);
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
-    const [sprints, setSprints] = useState<SprintDoc[]>([]);
-    const [tasks, setTasks] = useState<TaskDoc[]>([]);
-    const [teamMembers, setTeamMembers] = useState<UserDoc[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [sprints, setSprints]               = useState<SprintDoc[]>([]);
+    const [tasks, setTasks]                   = useState<TaskDoc[]>([]);
+    const [teamMembers, setTeamMembers]       = useState<UserDoc[]>([]);
+    const [loading, setLoading]               = useState(true);
+    const [loadingBoard, setLoadingBoard]     = useState(false);
+    const [error, setError]                   = useState('');
 
-    const loadBacklog = useCallback(async () => {
+    // ── 1. Resolve workspace + load boards once ──────────────────────────────
+    const loadWorkspaceAndBoards = useCallback(async () => {
         if (!projectId) {
             setLoading(false);
             return;
@@ -37,67 +43,104 @@ export function useBacklogData(projectId?: string) {
         try {
             const workspaces = await getWorkspaces();
 
-            const workspace =
+            const ws =
                 workspaces.find((item) =>
                     item.name === projectId ||
                     item.name.toLowerCase().replace(/\s+/g, '-') === projectId.toLowerCase()
                 ) ?? workspaces[0];
 
-            if (!workspace) {
+            if (!ws) {
+                setBoards([]);
                 setSelectedBoardId(null);
                 setTasks([]);
                 setSprints([]);
                 setTeamMembers([]);
+                setLoading(false);
                 return;
             }
 
-            const boards = await getBoardsForWorkspace(workspace._id);
-            const firstBoard = boards[0];
+            setWorkspace(ws);
 
-            setSelectedBoardId(firstBoard?._id ?? null);
-
-            if (!firstBoard) {
-                setTasks([]);
-                setSprints([]);
-                setTeamMembers([]);
-                return;
-            }
-
-            const [loadedSprints, loadedTasks] = await Promise.all([
-                getSprintsByBoard(firstBoard._id),
-                getTasksByBoard(firstBoard._id),
+            const [boardList, members] = await Promise.all([
+                getBoardsForWorkspace(ws._id),
+                getWorkspaceMembers(ws._id).catch(async () => getAllUsers()),
             ]);
 
-            setSprints(loadedSprints);
-            setTasks(loadedTasks);
+            setBoards(boardList);
+            setTeamMembers(members);
 
-            try {
-                const members = await getWorkspaceMembers(workspace._id);
-                setTeamMembers(members);
-            } catch {
-                const users = await getAllUsers();
-                setTeamMembers(users);
+            if (boardList.length > 0) {
+                setSelectedBoardId(boardList[0]._id);
+                // Tasks/sprints will be fetched by the board-specific effect below
+            } else {
+                setSelectedBoardId(null);
+                setTasks([]);
+                setSprints([]);
+                setLoading(false);
             }
         } catch (err: any) {
             setError(getApiError(err, 'Failed to load backlog'));
-        } finally {
             setLoading(false);
         }
     }, [projectId]);
 
     useEffect(() => {
-        loadBacklog();
-    }, [loadBacklog]);
+        loadWorkspaceAndBoards();
+    }, [loadWorkspaceAndBoards]);
+
+    // ── 2. Re-fetch sprints + tasks whenever selectedBoardId changes ──────────
+    useEffect(() => {
+        if (!selectedBoardId) return;
+
+        setLoadingBoard(true);
+
+        Promise.all([
+            getSprintsByBoard(selectedBoardId),
+            getTasksByBoard(selectedBoardId),
+        ])
+            .then(([loadedSprints, loadedTasks]) => {
+                setSprints(loadedSprints);
+                setTasks(loadedTasks);
+            })
+            .catch((err: any) => {
+                setError(getApiError(err, 'Failed to load board data'));
+            })
+            .finally(() => {
+                setLoading(false);
+                setLoadingBoard(false);
+            });
+    }, [selectedBoardId]);
+
+    // ── Board selection (called from the sidebar) ─────────────────────────────
+    const selectBoard = (boardId: string) => {
+        if (boardId === selectedBoardId) return;
+        setSelectedBoardId(boardId);
+        setTasks([]);
+        setSprints([]);
+    };
+
+    // ── Board created (called from BoardSidebar's onBoardCreated) ─────────────
+    const handleBoardCreated = (board: BoardDoc) => {
+        setBoards((prev) => [...prev, board]);
+        setSelectedBoardId(board._id);
+        setTasks([]);
+        setSprints([]);
+    };
 
     return {
+        workspace,
+        boards,
         selectedBoardId,
         sprints,
         tasks,
         setTasks,
         teamMembers,
         loading,
+        loadingBoard,
         error,
         setError,
-        reloadBacklog: loadBacklog,
+        selectBoard,
+        handleBoardCreated,
+        reloadBacklog: loadWorkspaceAndBoards,
     };
 }
