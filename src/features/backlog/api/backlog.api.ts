@@ -44,9 +44,13 @@ export async function getWorkspaceMembers(workspaceId: string) {
     const { data } = await api.get(`/workspaces/${workspaceId}/members`);
     const membersData = unwrap<any>(data, {});
 
-    return Array.isArray(membersData)
+    const raw: UserDoc[] = Array.isArray(membersData)
         ? membersData
         : [membersData.owner, ...(membersData.members ?? [])].filter(Boolean);
+
+    // Deduplicate by _id (owner is often included in the members array too)
+    const seen = new Set<string>();
+    return raw.filter(m => m?._id && !seen.has(m._id) && seen.add(m._id) as unknown as boolean);
 }
 
 export async function getAllUsers() {
