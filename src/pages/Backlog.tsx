@@ -39,6 +39,7 @@ import {
 import SprintSection from '../features/backlog/components/SprintSection';
 import CreateIssueDialog from '../features/backlog/components/CreateIssueDialog';
 import TaskDetailsDialog from '../features/backlog/components/TaskDetailsDialog';
+import BoardSidebar from '../features/boards/components/BoardSidebar';
 
 import {
   getTaskComments,
@@ -54,14 +55,19 @@ export default function Backlog() {
   const { user } = useAuth();
 
   const {
+    workspace,
+    boards,
     selectedBoardId,
     sprints,
     tasks,
     setTasks,
     teamMembers,
     loading,
+    loadingBoard,
     error,
     setError,
+    selectBoard,
+    handleBoardCreated,
   } = useBacklogData(projectId);
 
   const [search, setSearch] = useState('');
@@ -194,11 +200,20 @@ export default function Backlog() {
 
   if (loading) {
     return (
-      <Box sx={{ flex: 1, bgcolor: 'white', p: 2.5 }}>
-        <Skeleton variant="rounded" height={36} width={330} sx={{ mb: 2 }} />
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <Skeleton key={item} variant="rounded" height={44} sx={{ mb: 1 }} />
-        ))}
+      <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Sidebar skeleton */}
+        <Box sx={{ width: 200, flexShrink: 0, borderRight: `1px solid ${line}`, p: 2, pt: 3 }}>
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rounded" height={34} sx={{ mb: 1, borderRadius: '8px' }} />
+          ))}
+        </Box>
+        {/* Content skeleton */}
+        <Box sx={{ flex: 1, p: 2.5 }}>
+          <Skeleton variant="rounded" height={36} width={330} sx={{ mb: 2 }} />
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <Skeleton key={item} variant="rounded" height={44} sx={{ mb: 1 }} />
+          ))}
+        </Box>
       </Box>
     );
   }
@@ -211,9 +226,43 @@ export default function Backlog() {
         bgcolor: 'white',
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
       }}
     >
+      {/* ── Board Sidebar ── */}
+      <Box
+        sx={{
+          borderRight: `1px solid ${line}`,
+          pt: 3,
+          pl: 3,
+          pb: 3,
+          flexShrink: 0,
+        }}
+      >
+        <BoardSidebar
+          boards={boards as any}
+          selectedId={selectedBoardId}
+          onSelect={selectBoard}
+          onBoardCreated={handleBoardCreated as any}
+          workspaceId={workspace?._id ?? null}
+          loading={loading}
+        />
+      </Box>
+
+      {/* ── Main backlog area ── */}
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          opacity: loadingBoard ? 0.5 : 1,
+          transition: 'opacity 0.2s',
+          pointerEvents: loadingBoard ? 'none' : 'auto',
+        }}
+      >
       <Box
         sx={{
           height: 74,
@@ -404,6 +453,7 @@ export default function Backlog() {
         onClose={() => setCreateOpen(false)}
         onCreated={handleCreatedIssue}
       />
+      </Box>{/* end main area */}
     </Box>
   );
 }
