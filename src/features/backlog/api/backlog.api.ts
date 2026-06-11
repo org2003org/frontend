@@ -17,7 +17,7 @@ export async function getWorkspaces() {
 }
 
 export async function getBoardsForWorkspace(workspaceId: string) {
-    const { data } = await api.get('/boards');
+    const { data } = await api.get(`/boards/workspace/${workspaceId}`);
     const allBoards = uniqueById(unwrap<BoardDoc[]>(data, []));
 
     return allBoards.filter((board) => {
