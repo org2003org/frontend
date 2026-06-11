@@ -31,6 +31,7 @@ export default function CreateIssueDialog({
     teamMembers,
     onClose,
     onCreated,
+    defaultSprintId,
 }: {
     open: boolean;
     boardId: string | null;
@@ -38,6 +39,8 @@ export default function CreateIssueDialog({
     teamMembers: UserDoc[];
     onClose: () => void;
     onCreated: (task: TaskDoc) => void;
+    /** Pre-select a sprint when the dialog opens (e.g. from a sprint card's Add task button) */
+    defaultSprintId?: string;
 }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -55,13 +58,13 @@ export default function CreateIssueDialog({
         setTitle('');
         setDescription('');
         setPriority('Medium');
-        setSprintId('');
+        setSprintId(defaultSprintId ?? '');
         setAssignee('');
         setStoryPoints(0);
         setDueDate('');
         setLabels('');
         setError('');
-    }, [open]);
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
