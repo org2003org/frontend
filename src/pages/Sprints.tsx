@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Grid, Card, LinearProgress,
   Avatar, Chip, IconButton, Divider, Stack,
@@ -27,11 +27,11 @@ import type { UserDoc as BacklogUserDoc } from '../features/backlog/types/backlo
 // ─── Status / Priority config ──────────────────────────────────────────────────
 
 const statusColors: Record<string, { bg: string; text: string }> = {
-  Backlog:      { bg: '#f3f4f6', text: '#4b5563' },
-  'To Do':      { bg: '#e0e7ff', text: '#4338ca' },
-  'In Progress':{ bg: '#fef3c7', text: '#b45309' },
-  Review:       { bg: '#f3e8ff', text: '#7e22ce' },
-  Done:         { bg: '#d1fae5', text: '#047857' },
+  Backlog: { bg: '#f3f4f6', text: '#4b5563' },
+  'To Do': { bg: '#e0e7ff', text: '#4338ca' },
+  'In Progress': { bg: '#fef3c7', text: '#b45309' },
+  Review: { bg: '#f3e8ff', text: '#7e22ce' },
+  Done: { bg: '#d1fae5', text: '#047857' },
 };
 
 const statusLabels: Record<string, string> = {
@@ -84,47 +84,53 @@ function sprintMatchesTask(sprintId: string, task: TaskDoc): boolean {
   );
 }
 
-// ─── Sprint Card ───────────────────────────────────────────────────────────────
+// Compute sprint status purely from dates — no stored status needed
+function computeSprintStatus(sprint: Sprint): 'Planned' | 'Active' | 'Completed' {
+  const now  = Date.now();
+  const start = new Date(sprint.startDate).getTime();
+  const end   = new Date(sprint.endDate).getTime();
+  if (now < start)  return 'Planned';
+  if (now > end)    return 'Completed';
+  return 'Active';
+}
+
+// ─── Sprint Card ────────────────────────────────────────────────────────────────
 
 const SprintCard = ({
-  sprint, allTasks, isActive, onAddTask,
+  sprint, allTasks, onAddTask,
 }: {
   sprint: Sprint;
   allTasks: TaskDoc[];
-  isActive: boolean;
   onAddTask: (sprintId: string) => void;
 }) => {
-  const sprintId = sprint._id ?? sprint.id ?? '';
+  const status      = computeSprintStatus(sprint);
+  const isActive    = status === 'Active';
+  const isCompleted = status === 'Completed';
+  const sprintId    = sprint._id ?? sprint.id ?? '';
   const sprintTasks = allTasks.filter(t => sprintMatchesTask(sprintId, t));
 
   const completedPts = sprintTasks.filter(t => t.status === 'Done').reduce((s, t) => s + (t.storyPoints || 0), 0);
-  const totalPts     = sprintTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
-  const pct          = totalPts > 0 ? Math.round((completedPts / totalPts) * 100) : 0;
+  const totalPts = sprintTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
+  const pct = totalPts > 0 ? Math.round((completedPts / totalPts) * 100) : 0;
 
   const daysLeft = isActive && sprint.endDate
     ? Math.max(0, Math.ceil((new Date(sprint.endDate).getTime() - Date.now()) / 86400000))
     : 0;
 
-  const getSprintStatusColor = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':    return 'success';
-      case 'planned':   return 'info';
-      default:          return 'default';
-    }
-  };
+  const statusChipColor = isActive ? 'success' : status === 'Planned' ? 'info' : 'default';
 
   return (
-    <Card variant="outlined" sx={{ mb: 2, borderRadius: 2, borderColor: isActive ? 'primary.light' : 'grey.200', boxShadow: isActive ? 3 : 1 }}>
-      <Box sx={{ px: 3, py: 2, bgcolor: isActive ? '#f0f4ff' : 'grey.50' }}>
+    <Card variant="outlined" sx={{ mb: 2, borderRadius: 2, borderColor: isActive ? 'primary.light' : isCompleted ? 'success.light' : 'grey.200', boxShadow: isActive ? 3 : 1 }}>
+      <Box sx={{ px: 3, py: 2, bgcolor: isActive ? '#f0f4ff' : isCompleted ? '#f0fdf4' : 'grey.50' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <ZapIcon fontSize="small" color={isActive ? 'primary' : 'disabled'} />
               <Typography variant="h6" color={isActive ? 'primary.dark' : 'text.primary'}>{sprint.name}</Typography>
               <Chip
-                label={sprint.status || 'Unknown'}
+                label={status}
                 size="small"
-                color={getSprintStatusColor(sprint.status) as 'success' | 'info' | 'default'}
+                color={statusChipColor as 'success' | 'info' | 'default'}
                 sx={{ fontWeight: 500, height: 20 }}
               />
             </Box>
@@ -138,13 +144,13 @@ const SprintCard = ({
             <CalendarIcon fontSize="small" color="action" sx={{ fontSize: 16 }} />
             <Typography variant="caption" color="text.secondary">
               {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '?'} →{' '}
-              {sprint.endDate   ? new Date(sprint.endDate).toLocaleDateString()   : '?'}
+              {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '?'}
             </Typography>
           </Box>
           {isActive && sprint.endDate && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <TargetIcon fontSize="small" color="primary" sx={{ fontSize: 16 }} />
-              <Typography variant="caption" color="primary.main" fontWeight={500}>{daysLeft} days left</Typography>
+              <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500 }}>{daysLeft} days left</Typography>
             </Box>
           )}
         </Box>
@@ -158,7 +164,7 @@ const SprintCard = ({
           <Typography variant="body2" color="text.secondary">Sprint Progress</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="caption" color="text.secondary">{completedPts} / {totalPts} pts</Typography>
-            <Typography variant="body2" fontWeight={600}>{pct}%</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{pct}%</Typography>
           </Box>
         </Box>
         <LinearProgress
@@ -167,17 +173,17 @@ const SprintCard = ({
           sx={{
             height: 8, borderRadius: 4, bgcolor: 'grey.100',
             '& .MuiLinearProgress-bar': {
-              bgcolor: isActive ? 'primary.main' : pct === 100 ? 'success.main' : 'grey.400',
+              bgcolor: isCompleted ? 'success.main' : isActive ? 'primary.main' : 'grey.400',
             },
           }}
         />
 
         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
           {[
-            { label: 'To Do',        count: sprintTasks.filter(t => t.status === 'To Do').length,        color: '#818cf8' },
-            { label: 'In Progress',  count: sprintTasks.filter(t => t.status === 'In Progress').length,  color: '#fbbf24' },
-            { label: 'Review',       count: sprintTasks.filter(t => t.status === 'Review').length,       color: '#c084fc' },
-            { label: 'Done',         count: sprintTasks.filter(t => t.status === 'Done').length,         color: '#34d399' },
+            { label: 'To Do', count: sprintTasks.filter(t => t.status === 'To Do').length, color: '#818cf8' },
+            { label: 'In Progress', count: sprintTasks.filter(t => t.status === 'In Progress').length, color: '#fbbf24' },
+            { label: 'Review', count: sprintTasks.filter(t => t.status === 'Review').length, color: '#c084fc' },
+            { label: 'Done', count: sprintTasks.filter(t => t.status === 'Done').length, color: '#34d399' },
           ].map(s => s.count > 0 && (
             <Box key={s.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color }} />
@@ -192,7 +198,7 @@ const SprintCard = ({
       {/* Task rows */}
       <Stack divider={<Divider />} sx={{ bgcolor: 'white' }}>
         {sprintTasks.map(task => {
-          const statusConfig  = statusColors[task.status] || { bg: '#f3f4f6', text: '#4b5563' };
+          const statusConfig = statusColors[task.status] || { bg: '#f3f4f6', text: '#4b5563' };
           const priorityColor = priorityDot[task.priority] || '#9ca3af';
           return (
             <Box key={task._id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 1.5, '&:hover': { bgcolor: 'grey.50', cursor: 'pointer' } }}>
@@ -210,7 +216,7 @@ const SprintCard = ({
             </Box>
           );
         })}
-        {sprint.status?.toLowerCase() !== 'completed' && (
+        {!isCompleted && (
           <Box
             onClick={() => onAddTask(sprintId)}
             sx={{
@@ -234,12 +240,12 @@ const SprintCard = ({
 function CreateSprintDialog({ open, onClose, boardId, onCreated }: {
   open: boolean; onClose: () => void; boardId: string; onCreated: (sprint: Sprint) => void;
 }) {
-  const [name, setName]           = useState('');
-  const [goal, setGoal]           = useState('');
+  const [name, setName] = useState('');
+  const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate]     = useState('');
-  const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -306,22 +312,22 @@ export default function Sprints() {
 
   // ── Workspace & boards ──
   const [workspaceMongoId, setWorkspaceMongoId] = useState<string | null>(null);
-  const [boards, setBoards]                     = useState<BoardDoc[]>([]);
-  const [loadingBoards, setLoadingBoards]       = useState(true);
-  const [selectedBoardId, setSelectedBoardId]   = useState<string | null>(null);
+  const [boards, setBoards] = useState<BoardDoc[]>([]);
+  const [loadingBoards, setLoadingBoards] = useState(true);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
   // ── Sprints & tasks for selected board ──
-  const [sprints, setSprints]     = useState<Sprint[]>([]);
-  const [tasks, setTasks]         = useState<TaskDoc[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [tasks, setTasks] = useState<TaskDoc[]>([]);
+  const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   // ── Team members (for CreateIssueDialog) ──
   const [teamMembers, setTeamMembers] = useState<BacklogUserDoc[]>([]);
 
   // ── Create Issue dialog state ──
-  const [createIssueOpen, setCreateIssueOpen]       = useState(false);
-  const [createForSprintId, setCreateForSprintId]   = useState<string>('');
+  const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [createForSprintId, setCreateForSprintId] = useState<string>('');
 
   // 1. Resolve workspace + load boards
   useEffect(() => {
@@ -330,7 +336,7 @@ export default function Sprints() {
       try {
         const { data } = await api.get('/workspaces');
         const list = data.data ?? data;
-        const ws   = list.find((w: any) =>
+        const ws = list.find((w: any) =>
           w.name === projectId ||
           w.name.toLowerCase().replace(/\s+/g, '-') === projectId.toLowerCase()
         );
@@ -338,7 +344,7 @@ export default function Sprints() {
         setWorkspaceMongoId(wsId);
 
         if (wsId) {
-          const boardRes  = await api.get(`/boards/workspace/${wsId}`);
+          const boardRes = await api.get(`/boards/workspace/${wsId}`);
           const boardList: BoardDoc[] = boardRes.data.data ?? boardRes.data ?? [];
           setBoards(boardList);
           if (boardList.length > 0) setSelectedBoardId(boardList[0]._id);
@@ -406,18 +412,18 @@ export default function Sprints() {
   tasks.forEach(t => { if (t.assignee?._id) usersMap.set(t.assignee._id, t.assignee); });
   const users = Array.from(usersMap.values());
 
-  const activeSprint = sprints.find(s => s.status?.toLowerCase() === 'active') || sprints[0];
-  const activeId     = activeSprint?._id ?? activeSprint?.id ?? '';
+  const activeSprint = sprints.find(s => computeSprintStatus(s) === 'Active') ?? sprints[0];
+  const activeId = activeSprint?._id ?? activeSprint?.id ?? '';
 
-  const activeSprintTasks   = tasks.filter(t => sprintMatchesTask(activeId, t));
+  const activeSprintTasks = tasks.filter(t => sprintMatchesTask(activeId, t));
   const activeSprintVelocity = activeSprintTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
-  const activeSprintDone     = activeSprintTasks.filter(t => t.status === 'Done').length;
+  const activeSprintDone = activeSprintTasks.filter(t => t.status === 'Done').length;
 
   const teamCapacity = users.map(u => {
     const memberTasks = activeSprintTasks.filter(t => t.assignee?._id === u._id);
     return {
       ...u,
-      sprintTasks:  memberTasks.length,
+      sprintTasks: memberTasks.length,
       sprintPoints: memberTasks.reduce((s, t) => s + (t.storyPoints || 0), 0),
     };
   });
@@ -445,7 +451,7 @@ export default function Sprints() {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
+            <Typography variant="h5" sx={{ fontWeight: 600 }} color="text.primary">
               Sprint Planning{selectedBoard ? ` — ${selectedBoard.name}` : ''}
             </Typography>
             <Typography variant="body2" color="text.secondary">Manage and track your team's sprints</Typography>
@@ -472,19 +478,21 @@ export default function Sprints() {
             {/* Stats Row */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {[
-                { label: 'Sprint Velocity', value: `${activeSprintVelocity} pts`,         icon: TrendingUpIcon, color: 'primary.main',   bg: 'primary.light' },
-                { label: 'Team Capacity',   value: `${teamCapacity.reduce((s, u) => s + u.sprintPoints, 0)} pts`, icon: UsersIcon, color: 'secondary.main', bg: 'secondary.light' },
-                { label: 'Days Remaining',  value: activeSprint?.endDate
+                { label: 'Sprint Velocity', value: `${activeSprintVelocity} pts`, icon: TrendingUpIcon, color: 'primary.main', bg: 'primary.light' },
+                { label: 'Team Capacity', value: `${teamCapacity.reduce((s, u) => s + u.sprintPoints, 0)} pts`, icon: UsersIcon, color: 'secondary.main', bg: 'secondary.light' },
+                {
+                  label: 'Days Remaining', value: activeSprint?.endDate
                     ? Math.max(0, Math.ceil((new Date(activeSprint.endDate).getTime() - Date.now()) / 86400000))
-                    : 0,                                                                    icon: CalendarIcon,   color: 'warning.main',   bg: 'warning.light' },
-                { label: 'Tasks Complete',  value: `${activeSprintDone}/${activeSprintTasks.length}`, icon: TargetIcon, color: 'success.main', bg: 'success.light' },
+                    : 0, icon: CalendarIcon, color: 'warning.main', bg: 'warning.light'
+                },
+                { label: 'Tasks Complete', value: `${activeSprintDone}/${activeSprintTasks.length}`, icon: TargetIcon, color: 'success.main', bg: 'success.light' },
               ].map(stat => (
-                <Grid item xs={12} sm={6} md={3} key={stat.label}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={stat.label}>
                   <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
                     <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, opacity: 0.8 }}>
                       <stat.icon sx={{ color: stat.color }} />
                     </Box>
-                    <Typography variant="h5" fontWeight={700}>{stat.value}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>{stat.value}</Typography>
                     <Typography variant="caption" color="text.secondary">{stat.label}</Typography>
                   </Card>
                 </Grid>
@@ -494,18 +502,18 @@ export default function Sprints() {
             {/* Team Capacity */}
             {activeSprint && teamCapacity.length > 0 && (
               <Card variant="outlined" sx={{ borderRadius: 2, p: 3, mb: 4 }}>
-                <Typography variant="h6" fontWeight={600} mb={3}>Team Capacity — {activeSprint.name}</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>Team Capacity — {activeSprint.name}</Typography>
                 <Grid container spacing={2}>
                   {teamCapacity.map(member => {
                     const capacityPct = Math.min(100, Math.round((member.sprintPoints / 15) * 100));
                     const isOverloaded = member.sprintPoints > 15;
                     return (
-                      <Grid item xs={6} sm={4} md={2} key={member._id}>
+                      <Grid size={{ xs: 6, sm: 4, md: 2 }} key={member._id}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, borderRadius: 2, bgcolor: 'grey.50', '&:hover': { bgcolor: '#f0f4ff' } }}>
                           <Avatar sx={{ width: 36, height: 36, mb: 1, bgcolor: avatarColor(member.name || '?'), fontSize: '0.8rem' }}>
                             {initials(member.name || '?')}
                           </Avatar>
-                          <Typography variant="caption" fontWeight={600}>{member.name?.split(' ')[0] || 'Unknown'}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>{member.name?.split(' ')[0] || 'Unknown'}</Typography>
                           <LinearProgress
                             variant="determinate"
                             value={capacityPct}
@@ -547,7 +555,6 @@ export default function Sprints() {
                     key={sprint._id ?? sprint.id}
                     sprint={sprint}
                     allTasks={tasks}
-                    isActive={sprint.status?.toLowerCase() === 'active'}
                     onAddTask={handleAddTask}
                   />
                 ))

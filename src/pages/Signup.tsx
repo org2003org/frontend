@@ -39,7 +39,7 @@ export default function Signup() {
     }
     try {
       await signup(name, email, password);
-      navigate('/project/zabatet-platform/dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }

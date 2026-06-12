@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import Login from './pages/Login';
@@ -10,6 +10,7 @@ import Backlog from './pages/Backlog';
 import Sprints from './pages/Sprints';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
+import WorkspaceRedirect from './pages/WorkspaceRedirect';
 
 function App() {
   return (
@@ -21,7 +22,8 @@ function App() {
 
         {/* Protected routes — require auth */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Navigate to="/project/zabatet-platform/dashboard" replace />} />
+          {/* Smart landing: redirects to first workspace or shows "create first" screen */}
+          <Route path="/" element={<WorkspaceRedirect />} />
           <Route path="/profile" element={<Profile />} />
 
           <Route path="/project/:projectId" element={<AppLayout />}>

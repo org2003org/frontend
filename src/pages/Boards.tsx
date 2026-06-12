@@ -52,7 +52,7 @@ export default function Boards() {
     issueNumbers,
     teamMembers,
     selectedTask,
-    selectedTaskId,
+
     setSelectedTaskId,
     comments,
     commentsLoading,

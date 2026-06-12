@@ -228,7 +228,7 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
         onClose={handleMenuClose}
-        PaperProps={{ sx: { borderRadius: '10px', minWidth: 140, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+        slotProps={{ paper: { sx: { borderRadius: '10px', minWidth: 140, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } } }}
       >
         <MenuItem onClick={handleEditClick} sx={{ fontSize: '0.85rem' }}>
           <ListItemIcon sx={{ minWidth: 28 }}><EditIcon fontSize="small" /></ListItemIcon>

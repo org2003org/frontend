@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Box, Typography, Avatar, Chip, Skeleton, Paper, IconButton,
     Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -198,7 +198,7 @@ export default function Team() {
             </Paper>
 
             {/* Invite Dialog */}
-            <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} PaperProps={{ sx: { borderRadius: '14px', width: '100%', maxWidth: 400 } }}>
+            <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} slotProps={{ paper: { sx: { borderRadius: '14px', width: '100%', maxWidth: 400 } } }}>
                 <DialogTitle sx={{ fontWeight: 700, color: '#1A1A2E' }}>Invite Member</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" sx={{ color: '#757575', mb: 3 }}>
