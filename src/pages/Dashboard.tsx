@@ -1,4 +1,4 @@
-import React from 'react';
+
 import {
     Box, Typography, Avatar, Chip, Tooltip, Skeleton, Paper, IconButton,
 } from '@mui/material';
@@ -7,13 +7,13 @@ import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import BoltIcon from '@mui/icons-material/Bolt';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import FlagIcon from '@mui/icons-material/Flag';
+
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import EmailIcon from '@mui/icons-material/Email';
+
 import { useAuth } from '../context/AuthContext';
 import {
-    useDashboardData, type TaskStatus, type Priority,
+    useDashboardData, type Priority,
     STATUS_COLORS, PRIORITY_COLORS, STATUS_ORDER, PRIORITY_ORDER,
     avatarColor, getInitials,
 } from '../api/DashboardAPI';
@@ -255,7 +255,7 @@ export default function Dashboard() {
     const {
         loading, error, workspaceName, kpis,
         statusCounts, priorityCounts, activeSprintsList,
-        boardStats, upcomingDeadlines, memberStats, refresh,
+        boardStats, upcomingDeadlines, refresh,
     } = useDashboardData();
 
     const greeting = (() => {

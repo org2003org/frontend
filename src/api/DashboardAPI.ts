@@ -73,6 +73,16 @@ export function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+// Compute sprint status from dates — same logic as Sprints page
+export function computeSprintStatus(sprint: { startDate: string; endDate: string }): 'Planned' | 'Active' | 'Completed' {
+  const now   = Date.now();
+  const start = new Date(sprint.startDate).getTime();
+  const end   = new Date(sprint.endDate).getTime();
+  if (now < start) return 'Planned';
+  if (now > end)   return 'Completed';
+  return 'Active';
+}
+
 export function useDashboardData() {
   const { projectId } = useParams<{ projectId: string }>();
 
@@ -161,7 +171,7 @@ export function useDashboardData() {
   const kpis = useMemo(() => {
     const totalTasks = allTasks.length;
     const totalBoards = boards.length;
-    const activeSprints = allSprints.filter(s => s.status === 'Active').length;
+    const activeSprints = allSprints.filter(s => computeSprintStatus(s) === 'Active').length;
     const totalStoryPoints = allTasks.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
     const completedTasks = allTasks.filter(t => t.status === 'Done').length;
     return { totalTasks, totalBoards, activeSprints, totalStoryPoints, completedTasks };
@@ -180,7 +190,7 @@ export function useDashboardData() {
   }, [allTasks]);
 
   const activeSprintsList = useMemo(() => {
-    return allSprints.filter(s => s.status === 'Active').map(sprint => {
+    return allSprints.filter(s => computeSprintStatus(s) === 'Active').map(sprint => {
       const sprintTasks = allTasks.filter(t => {
         const sid = typeof t.sprintId === 'object' && t.sprintId ? t.sprintId._id : t.sprintId;
         return sid === sprint._id;

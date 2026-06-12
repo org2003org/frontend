@@ -47,7 +47,7 @@ export default function EditWorkspaceDialog({ open, onClose, workspace, onWorksp
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px' } }}>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: '16px' } } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>Edit Workspace</Typography>
         <IconButton onClick={onClose} size="small" sx={{ color: '#9E9E9E' }}>
