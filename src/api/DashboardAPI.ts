@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from './api';
 
+//interfaces
 export interface MemberDoc {
   _id: string;
   name: string;
@@ -64,7 +65,8 @@ export const PRIORITY_ORDER: Priority[] = ['Low', 'Medium', 'High'];
 export function avatarColor(name: string): string {
   const palette = ['#7C4DFF', '#E91E63', '#009688', '#FF5722', '#3F51B5', '#0288D1', '#F57C00'];
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  for (let i = 0; i < name.length; i++)
+    h = name.charCodeAt(i) + ((h << 5) - h);
   return palette[Math.abs(h) % palette.length];
 }
 
@@ -75,14 +77,15 @@ export function getInitials(name: string): string {
 
 // Compute sprint status from dates — same logic as Sprints page
 export function computeSprintStatus(sprint: { startDate: string; endDate: string }): 'Planned' | 'Active' | 'Completed' {
-  const now   = Date.now();
+  const now = Date.now();
   const start = new Date(sprint.startDate).getTime();
-  const end   = new Date(sprint.endDate).getTime();
+  const end = new Date(sprint.endDate).getTime();
   if (now < start) return 'Planned';
-  if (now > end)   return 'Completed';
+  if (now > end) return 'Completed';
   return 'Active';
 }
 
+//custom hook to fetch dashboard data
 export function useDashboardData() {
   const { projectId } = useParams<{ projectId: string }>();
 
@@ -118,7 +121,7 @@ export function useDashboardData() {
         const memData = memRes.data.data ?? memRes.data;
         const oId = memData.owner?._id || '';
         setOwnerId(oId);
-        
+
         let membersList: MemberDoc[] = memData.members ?? [];
         membersList = membersList.map((m: MemberDoc) => ({
           ...m,
@@ -167,7 +170,7 @@ export function useDashboardData() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // ─── Computed KPIs ────────────────────────────────────────
+  //KPIs
   const kpis = useMemo(() => {
     const totalTasks = allTasks.length;
     const totalBoards = boards.length;

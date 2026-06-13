@@ -22,17 +22,16 @@ function DonutChart({ items, total, title, loading }: {
     items: { label: string; count: number; color: string; bg?: string }[];
     total: number; title: string; loading: boolean;
 }) {
-    if (loading) return <Skeleton variant="rounded" height={280} sx={{ borderRadius: '16px' }} />;
-    const size = 130; const sw = 18; const r = (size - sw) / 2;
-    const circ = 2 * Math.PI * r;
-    let offset = 0;
-    const segs = items.map(it => {
-        const pct = total > 0 ? it.count / total : 0;
-        const dl = pct * circ;
-        const s = { ...it, pct, dl, offset };
-        offset += dl;
-        return s;
+    if (loading)
+        return <Skeleton variant="rounded" height={280} sx={{ borderRadius: '16px' }} />;
+
+    let percent = 0;
+    const stops = items.filter(i => i.count > 0).flatMap(i => {
+        const start = percent;
+        percent += (i.count / total) * 100;
+        return [`${i.color} ${start}%`, `${i.color} ${percent}%`];
     });
+    const bg = stops.length ? `conic-gradient(${stops.join(', ')})` : '#F0F0F0';
 
     return (
         <Paper elevation={2} sx={{ p: 2.5, borderRadius: '16px', border: 'none', height: '100%' }}>
@@ -41,19 +40,14 @@ function DonutChart({ items, total, title, loading }: {
                 {total === 0 ? (
                     <Typography variant="body2" sx={{ color: '#BDBDBD', py: 4 }}>No tasks</Typography>
                 ) : (
-                    <Box sx={{ position: 'relative', width: size, height: size }}>
-                        <svg width={size} height={size}>
-                            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F0F0F0" strokeWidth={sw} />
-                            {segs.map(s => s.pct > 0 && (
-                                <circle key={s.label} cx={size / 2} cy={size / 2} r={r} fill="none"
-                                    stroke={s.color} strokeWidth={sw}
-                                    strokeDasharray={`${s.dl} ${circ - s.dl}`}
-                                    strokeDashoffset={-s.offset} strokeLinecap="butt"
-                                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                                    style={{ transition: 'all 0.4s ease' }} />
-                            ))}
-                        </svg>
-                        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <Box sx={{
+                        width: 130, height: 130, borderRadius: '50%', background: bg,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <Box sx={{
+                            width: 94, height: 94, borderRadius: '50%', bgcolor: 'white',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+                        }}>
                             <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E', lineHeight: 1 }}>{total}</Typography>
                             <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.65rem' }}>tasks</Typography>
                         </Box>

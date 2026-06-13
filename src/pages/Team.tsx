@@ -17,12 +17,12 @@ import { useAuth } from '../context/AuthContext';
 export default function Team() {
     const { user } = useAuth();
     const { loading, error, memberStats, workspaceId, ownerId, refresh } = useDashboardData();
-    
+    // invite dialog states
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState('');
-    
+
     const [removeLoading, setRemoveLoading] = useState<string | null>(null);
     const [actionError, setActionError] = useState('');
 
@@ -37,10 +37,6 @@ export default function Team() {
             icon = <WorkspacePremiumIcon sx={{ fontSize: '0.75rem !important' }} />;
             bg = '#FFF3E0';
             color = '#E65100';
-        } else if (role === 'Admin') {
-            icon = <AdminPanelSettingsIcon sx={{ fontSize: '0.75rem !important' }} />;
-            bg = '#EDE7F6';
-            color = '#7C4DFF';
         }
 
         return (
@@ -53,8 +49,7 @@ export default function Team() {
                     fontSize: '0.6rem',
                     fontWeight: 600,
                     bgcolor: bg,
-                    color: color,
-                    '& .MuiChip-icon': { color: `${color} !important` }
+                    color: color
                 }}
             />
         );
@@ -140,7 +135,7 @@ export default function Team() {
                     </Typography>
                     <Chip label={`${memberStats.length} members`} size="small" sx={{ height: 20, fontSize: '0.66rem', fontWeight: 600, bgcolor: '#EDE7F6', color: '#7C4DFF' }} />
                 </Box>
-                
+
                 {memberStats.length === 0 ? (
                     <Typography variant="body2" sx={{ color: '#BDBDBD', textAlign: 'center', py: 4 }}>No members found</Typography>
                 ) : (
@@ -178,16 +173,36 @@ export default function Team() {
                                         <Typography variant="caption" sx={{ color: '#9E9E9E', fontSize: '0.6rem' }}>done</Typography>
                                     </Box>
                                 </Box>
+                                {/* Remove button */}
                                 <Box sx={{ ml: 1 }}>
-                                    {user?._id === ownerId && m._id !== ownerId && (
-                                        <Tooltip title="Remove Member">
-                                            <IconButton 
-                                                onClick={() => handleRemove(m._id)}
-                                                disabled={removeLoading === m._id}
-                                                sx={{ color: '#FF5252', '&:hover': { bgcolor: '#FFEBEE' } }}
-                                            >
-                                                {removeLoading === m._id ? <CircularProgress size={20} color="error" /> : <DeleteIcon fontSize="small" />}
-                                            </IconButton>
+                                    {user?._id === ownerId && (
+                                        <Tooltip
+                                            title={m._id === ownerId ? "Owner can't be removed" : "Remove Member"}
+                                        >
+                                            <span>
+                                                <IconButton
+                                                    onClick={() => handleRemove(m._id)}
+                                                    disabled={
+                                                        m._id === ownerId ||
+                                                        removeLoading === m._id
+                                                    }
+                                                    sx={{
+                                                        color: '#FF5252',
+                                                        '&:hover': {
+                                                            bgcolor:
+                                                                m._id === ownerId
+                                                                    ? 'transparent'
+                                                                    : '#FFEBEE'
+                                                        }
+                                                    }}
+                                                >
+                                                    {removeLoading === m._id ? (
+                                                        <CircularProgress size={20} color="error" />
+                                                    ) : (
+                                                        <DeleteIcon fontSize="small" />
+                                                    )}
+                                                </IconButton>
+                                            </span>
                                         </Tooltip>
                                     )}
                                 </Box>
@@ -197,7 +212,6 @@ export default function Team() {
                 )}
             </Paper>
 
-            {/* Invite Dialog */}
             <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} slotProps={{ paper: { sx: { borderRadius: '14px', width: '100%', maxWidth: 400 } } }}>
                 <DialogTitle sx={{ fontWeight: 700, color: '#1A1A2E' }}>Invite Member</DialogTitle>
                 <DialogContent>
@@ -223,9 +237,9 @@ export default function Team() {
                     <Button onClick={() => setInviteOpen(false)} disabled={inviteLoading} sx={{ color: '#757575', fontWeight: 600, textTransform: 'none' }}>
                         Cancel
                     </Button>
-                    <Button 
-                        onClick={handleInvite} 
-                        variant="contained" 
+                    <Button
+                        onClick={handleInvite}
+                        variant="contained"
                         disabled={!inviteEmail || inviteLoading}
                         sx={{ bgcolor: '#7C4DFF', borderRadius: '8px', textTransform: 'none', fontWeight: 600, '&:hover': { bgcolor: '#651FFF' } }}
                     >
