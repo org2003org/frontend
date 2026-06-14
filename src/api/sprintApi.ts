@@ -31,5 +31,8 @@ export const sprintApi = {
   completeSprint: async (id: string) => {
     const response = await api.patch(`/sprints/${id}/complete`);
     return response.data.sprint as Sprint;
+  },
+  deleteSprint: async (id: string) => {
+    await api.delete(`/sprints/${id}`);
   }
 };

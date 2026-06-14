@@ -42,7 +42,7 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [shouldRefetch, setShouldRefetch] = useState(false);
-  
+
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Project | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -71,7 +71,7 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
         await api.delete(`/workspaces/${selectedWorkspace._id}`);
         handleWorkspaceCreated(); // Refetch workspaces
         if (projectId === selectedWorkspace.id) {
-            navigate('/');
+          navigate('/');
         }
       } catch (err) {
         console.error('Error deleting workspace', err);
@@ -127,8 +127,6 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
   // Collaboration and utility links
   const secondaryMenuItems = [
     { text: 'Team', icon: <PeopleIcon />, path: 'team' },
-    { text: 'AI Assistant', icon: <SmartToyIcon />, path: 'ai-assistant' },
-    { text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
   ];
 
   // Helper component to avoid repetitive rendering logic
@@ -194,8 +192,8 @@ export default function Sidebar({ drawerWidth }: SidebarProps) {
 
       <List>
         {projects.map((proj) => (
-          <ListItem 
-            key={proj.id} 
+          <ListItem
+            key={proj.id}
             disablePadding
             secondaryAction={
               <IconButton edge="end" size="small" onClick={(e) => handleMenuClick(e, proj)} sx={{ mr: 0.5, color: '#9E9E9E' }}>

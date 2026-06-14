@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Grid, Card, LinearProgress,
   Avatar, Chip, IconButton, Divider, Stack,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert,
+  Menu, MenuItem, ListItemIcon, ListItemText
 } from '@mui/material';
 import {
   Bolt as ZapIcon,
@@ -11,7 +12,9 @@ import {
   TrendingUp as TrendingUpIcon,
   People as UsersIcon,
   Add as PlusIcon,
-  MoreHoriz as MoreHorizontalIcon
+  MoreHoriz as MoreHorizontalIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
 import { sprintApi } from '../api/sprintApi';
@@ -24,7 +27,6 @@ import CreateIssueDialog from '../features/backlog/components/CreateIssueDialog'
 import { getWorkspaceMembers } from '../features/backlog/api/backlog.api';
 import type { UserDoc as BacklogUserDoc } from '../features/backlog/types/backlog.types';
 
-// ─── Status / Priority config ──────────────────────────────────────────────────
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   Backlog: { bg: '#f3f4f6', text: '#4b5563' },
@@ -43,7 +45,7 @@ const priorityDot: Record<string, string> = {
   High: '#f59e0b', Medium: '#3b82f6', Low: '#9ca3af',
 };
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+
 
 export interface UserDoc {
   _id: string;
@@ -61,7 +63,7 @@ export interface TaskDoc {
   storyPoints?: number;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+
 
 function initials(name: string): string {
   if (!name) return '?';
@@ -84,29 +86,31 @@ function sprintMatchesTask(sprintId: string, task: TaskDoc): boolean {
   );
 }
 
-// Compute sprint status purely from dates — no stored status needed
+
 function computeSprintStatus(sprint: Sprint): 'Planned' | 'Active' | 'Completed' {
-  const now  = Date.now();
+  const now = Date.now();
   const start = new Date(sprint.startDate).getTime();
-  const end   = new Date(sprint.endDate).getTime();
-  if (now < start)  return 'Planned';
-  if (now > end)    return 'Completed';
+  const end = new Date(sprint.endDate).getTime();
+  if (now < start) return 'Planned';
+  if (now > end) return 'Completed';
   return 'Active';
 }
 
-// ─── Sprint Card ────────────────────────────────────────────────────────────────
+
 
 const SprintCard = ({
-  sprint, allTasks, onAddTask,
+  sprint, allTasks, onAddTask, onEdit, onDelete,
 }: {
   sprint: Sprint;
   allTasks: TaskDoc[];
   onAddTask: (sprintId: string) => void;
+  onEdit: (sprint: Sprint) => void;
+  onDelete: (sprintId: string) => void;
 }) => {
-  const status      = computeSprintStatus(sprint);
-  const isActive    = status === 'Active';
+  const status = computeSprintStatus(sprint);
+  const isActive = status === 'Active';
   const isCompleted = status === 'Completed';
-  const sprintId    = sprint._id ?? sprint.id ?? '';
+  const sprintId = sprint._id ?? sprint.id ?? '';
   const sprintTasks = allTasks.filter(t => sprintMatchesTask(sprintId, t));
 
   const completedPts = sprintTasks.filter(t => t.status === 'Done').reduce((s, t) => s + (t.storyPoints || 0), 0);
@@ -136,7 +140,7 @@ const SprintCard = ({
             </Box>
             <Typography variant="body2" color="text.secondary">{sprint.goal}</Typography>
           </Box>
-          <IconButton size="small"><MoreHorizontalIcon fontSize="small" /></IconButton>
+          <SprintMenu sprint={sprint} onEdit={onEdit} onDelete={onDelete} />
         </Box>
 
         <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
@@ -235,7 +239,119 @@ const SprintCard = ({
   );
 };
 
-// ─── Create Sprint Dialog ──────────────────────────────────────────────────────
+
+
+function SprintMenu({ sprint, onEdit, onDelete }: {
+  sprint: Sprint;
+  onEdit: (sprint: Sprint) => void;
+  onDelete: (sprintId: string) => void;
+}) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const sprintId = sprint._id ?? sprint.id ?? '';
+
+  return (
+    <>
+      <IconButton size="small" onClick={e => setAnchorEl(e.currentTarget)}>
+        <MoreHorizontalIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={() => setAnchorEl(null)}
+        slotProps={{ paper: { sx: { borderRadius: '10px', minWidth: 140 } } }}
+      >
+        <MenuItem onClick={() => { setAnchorEl(null); onEdit(sprint); }}>
+          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { setAnchorEl(null); onDelete(sprintId); }} sx={{ color: 'error.main' }}>
+          <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
+
+
+
+function EditSprintDialog({ open, onClose, sprint, onUpdated }: {
+  open: boolean; onClose: () => void; sprint: Sprint | null; onUpdated: (sprint: Sprint) => void;
+}) {
+  const [name, setName] = useState('');
+  const [goal, setGoal] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  // Populate form when sprint changes
+  useEffect(() => {
+    if (open && sprint) {
+      setName(sprint.name || '');
+      setGoal(sprint.goal || '');
+      setStartDate(sprint.startDate ? new Date(sprint.startDate).toISOString().slice(0, 10) : '');
+      setEndDate(sprint.endDate ? new Date(sprint.endDate).toISOString().slice(0, 10) : '');
+      setError('');
+    }
+  }, [open, sprint]);
+
+  const handleSubmit = async () => {
+    if (!sprint || !name.trim() || !startDate || !endDate) return;
+    const sprintId = sprint._id ?? sprint.id ?? '';
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await sprintApi.updateSprint(sprintId, { name: name.trim(), goal: goal.trim(), startDate, endDate });
+      onUpdated(updated);
+      onClose();
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? 'Failed to update sprint');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '16px' } } }}>
+      <DialogTitle sx={{ fontWeight: 700 }}>Edit Sprint</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1, mt: 1 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <TextField autoFocus label="Sprint Name" size="small" fullWidth value={name} onChange={e => setName(e.target.value)} />
+        <TextField label="Sprint Goal" size="small" fullWidth value={goal} onChange={e => setGoal(e.target.value)} multiline rows={2} />
+        <TextField
+          size="small" type="date" fullWidth label="Start Date"
+          slotProps={{ inputLabel: { shrink: true } }}
+          value={startDate} onChange={e => setStartDate(e.target.value)}
+        />
+        <TextField
+          size="small" type="date" fullWidth label="End Date"
+          slotProps={{ inputLabel: { shrink: true } }}
+          value={endDate} onChange={e => setEndDate(e.target.value)}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} sx={{ textTransform: 'none' }}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={!name.trim() || !startDate || !endDate || saving}
+          sx={{
+            textTransform: 'none', borderRadius: '8px',
+            background: 'linear-gradient(135deg, #7C4DFF, #651FFF)',
+            '&:hover': { background: 'linear-gradient(135deg, #651FFF, #4527A0)' },
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+
 
 function CreateSprintDialog({ open, onClose, boardId, onCreated }: {
   open: boolean; onClose: () => void; boardId: string; onCreated: (sprint: Sprint) => void;
@@ -305,7 +421,7 @@ function CreateSprintDialog({ open, onClose, boardId, onCreated }: {
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 
 export default function Sprints() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -328,6 +444,10 @@ export default function Sprints() {
   // ── Create Issue dialog state ──
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [createForSprintId, setCreateForSprintId] = useState<string>('');
+
+  // ── Edit / Delete sprint state ──
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
 
   // 1. Resolve workspace + load boards
   useEffect(() => {
@@ -405,6 +525,27 @@ export default function Sprints() {
   // Append newly created task to local state (instant UI update)
   const handleIssueCreated = (task: any) => {
     setTasks(prev => [task, ...prev]);
+  };
+
+  // Open edit dialog for a sprint
+  const handleEditSprint = (sprint: Sprint) => {
+    setEditingSprint(sprint);
+    setEditOpen(true);
+  };
+
+  // Delete a sprint
+  const handleDeleteSprint = async (sprintId: string) => {
+    try {
+      await sprintApi.deleteSprint(sprintId);
+      setSprints(prev => prev.filter(s => (s._id ?? s.id) !== sprintId));
+    } catch (e) {
+      console.error('Failed to delete sprint', e);
+    }
+  };
+
+  // Handle sprint updated from edit dialog
+  const handleSprintUpdated = (updated: Sprint) => {
+    setSprints(prev => prev.map(s => (s._id ?? s.id) === (updated._id ?? updated.id) ? updated : s));
   };
 
   // ── Derived stats ──
@@ -556,6 +697,8 @@ export default function Sprints() {
                     sprint={sprint}
                     allTasks={tasks}
                     onAddTask={handleAddTask}
+                    onEdit={handleEditSprint}
+                    onDelete={handleDeleteSprint}
                   />
                 ))
               )}
@@ -573,6 +716,14 @@ export default function Sprints() {
           onCreated={sprint => setSprints(prev => [...prev, sprint])}
         />
       )}
+
+      {/* Edit Sprint Dialog */}
+      <EditSprintDialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        sprint={editingSprint}
+        onUpdated={handleSprintUpdated}
+      />
 
       {/* Create Issue Dialog — opened from sprint card's "Add task" */}
       <CreateIssueDialog
