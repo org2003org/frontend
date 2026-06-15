@@ -8,7 +8,6 @@ import EmailIcon from '@mui/icons-material/Email';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonIcon from '@mui/icons-material/Person';
 import { useDashboardData, avatarColor, getInitials } from '../api/DashboardAPI';
 import api from '../api/api';
