@@ -78,7 +78,7 @@ const KPI_CONFIG = [
     { key: 'totalBoards', label: 'Boards', icon: ViewKanbanIcon, accent: '#009688' },
     { key: 'activeSprints', label: 'Active Sprints', icon: BoltIcon, accent: '#FF9800' },
     { key: 'totalStoryPoints', label: 'Story Points', icon: StarIcon, accent: '#E91E63' },
-    { key: 'completedTasks', label: 'Completed', icon: CheckCircleIcon, accent: '#4CAF50' },
+    { key: 'completedTasks', label: 'Completed Tasks', icon: CheckCircleIcon, accent: '#4CAF50' },
 ] as const;
 
 function KPICardGrid({ kpis, loading }: { kpis: Record<string, number>; loading: boolean }) {

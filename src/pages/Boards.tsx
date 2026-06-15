@@ -4,18 +4,22 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   LinearProgress,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DownloadIcon from '@mui/icons-material/Download';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/api';
 
 // ── Board feature components & hook ──────────────────────────────────────────
 import BoardSidebar from '../features/boards/components/BoardSidebar';
@@ -67,6 +71,44 @@ export default function Boards() {
   // Local UI state (not related to data)
   const [filterMode, setFilterMode] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [createOpen, setCreateOpen] = useState(false);
+
+  // AI pdf Summary
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const handleDownloadSummary = async () => {
+    // console.log("Current BoardID:", selectedBoardId);
+    if (!selectedBoardId) return;
+    setSummaryLoading(true);
+    try {
+      const { data } = await api.post(`/ai/boards/${selectedBoardId}/simplify-pdf`, {}, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedBoard?.name ?? 'board'}-summary.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      let msg = 'Failed to download summary PDF.';
+      try {
+        if (e?.response?.data instanceof Blob) {
+          const text = await e.response.data.text();
+          const json = JSON.parse(text);
+          msg = json.message || msg;
+        } else if (e?.response?.data?.message) {
+          msg = e.response.data.message;
+        }
+      } catch {
+        alert(msg);
+      }
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   // ── Filtering ──────────────────────────────────────────────────────────────
   const filteredTasks = tasks.filter(task => {
@@ -177,24 +219,58 @@ export default function Boards() {
             </ToggleButtonGroup>
           </Box>
 
-          {/* Right side — Create Issue */}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateOpen(true)}
-            disabled={!selectedBoardId}
-            sx={{
-              height: 36,
-              px: 2,
-              borderRadius: '10px',
-              textTransform: 'none',
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #7C4DFF, #651FFF)',
-              '&:hover': { background: 'linear-gradient(135deg, #651FFF, #4527A0)' },
-            }}
-          >
-            Create Issue
-          </Button>
+          {/*download button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Download AI-generated board summary as PDF" arrow>
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={
+                    summaryLoading
+                      ? <CircularProgress size={16} sx={{ color: '#7C4DFF' }} />
+                      : <DownloadIcon />
+                  }
+                  onClick={handleDownloadSummary}
+                  disabled={!selectedBoardId || summaryLoading}
+                  id="download-summary-btn"
+                  sx={{
+                    height: 36,
+                    px: 2,
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    borderColor: '#7C4DFF',
+                    color: '#7C4DFF',
+                    background: 'linear-gradient(135deg, #EDE7F620, #E8EAF620)',
+                    '&:hover': {
+                      borderColor: '#651FFF',
+                      background: 'linear-gradient(135deg, #EDE7F680, #E8EAF680)',
+                    },
+                  }}
+                >
+                  {summaryLoading ? 'Downloading…' : 'Download Summary'}
+                </Button>
+              </span>
+            </Tooltip>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateOpen(true)}
+              disabled={!selectedBoardId}
+              sx={{
+                height: 36,
+                px: 2,
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #7C4DFF, #651FFF)',
+                '&:hover': { background: 'linear-gradient(135deg, #651FFF, #4527A0)' },
+              }}
+            >
+              Create Issue
+            </Button>
+          </Box>
         </Box>
 
         {/* ── Progress bar ── */}
@@ -293,6 +369,8 @@ export default function Boards() {
         onClose={() => setCreateOpen(false)}
         onCreated={handleCreatedIssue}
       />
+
+
     </Box>
   );
 }
