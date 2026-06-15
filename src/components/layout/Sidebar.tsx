@@ -5,8 +5,6 @@ import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import RunCircleIcon from '@mui/icons-material/RunCircle';
 import PeopleIcon from '@mui/icons-material/People';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import SettingsIcon from '@mui/icons-material/Settings';
 import CircleIcon from '@mui/icons-material/Circle';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
