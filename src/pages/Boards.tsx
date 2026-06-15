@@ -20,6 +20,7 @@ import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
+import { useReportJob } from '../context/ReportJobContext';
 
 // ── Board feature components & hook ──────────────────────────────────────────
 import BoardSidebar from '../features/boards/components/BoardSidebar';
@@ -72,41 +73,22 @@ export default function Boards() {
   const [filterMode, setFilterMode] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [createOpen, setCreateOpen] = useState(false);
 
-  // AI pdf Summary
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  // AI pdf Summary — actual job tracking lives in the global ReportJobContext
+  const { job: reportJob, startJob } = useReportJob();
+  const summaryLoading = reportJob?.status === 'pending';
 
   const handleDownloadSummary = async () => {
-    // console.log("Current BoardID:", selectedBoardId);
     if (!selectedBoardId) return;
-    setSummaryLoading(true);
     try {
-      const { data } = await api.post(`/ai/boards/${selectedBoardId}/simplify-pdf`, {}, {
-        responseType: 'blob',
-      });
-      const blob = new Blob([data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${selectedBoard?.name ?? 'board'}-summary.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      // Just kick off the job — backend responds immediately with { jobId, boardName }
+      const { data } = await api.post<{ jobId: string; boardName: string }>(
+        `/ai/boards/${selectedBoardId}/simplify-pdf`
+      );
+      startJob(data.jobId, data.boardName);
     } catch (e: any) {
-      let msg = 'Failed to download summary PDF.';
-      try {
-        if (e?.response?.data instanceof Blob) {
-          const text = await e.response.data.text();
-          const json = JSON.parse(text);
-          msg = json.message || msg;
-        } else if (e?.response?.data?.message) {
-          msg = e.response.data.message;
-        }
-      } catch {
-        alert(msg);
-      }
-    } finally {
-      setSummaryLoading(false);
+      const msg =
+        e?.response?.data?.message ?? 'Failed to start AI report. Please try again.';
+      alert(msg);
     }
   };
 
