@@ -57,8 +57,8 @@ export function ReportJobProvider({ children }: { children: ReactNode }) {
     downloadingRef.current = true;
 
     try {
-      // Stream the PDF blob from the status endpoint (which serves the file when done)
-      const { data } = await api.get(`/ai/jobs/${jobId}/status`, {
+      // Call the dedicated /download endpoint — NOT /status (status only returns JSON)
+      const { data } = await api.get(`/ai/jobs/${jobId}/download`, {
         responseType: 'blob',
       });
 
